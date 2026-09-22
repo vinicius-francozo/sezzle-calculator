@@ -1,0 +1,15 @@
+# Keep the build context small: dependencies and output are rebuilt in the image.
+node_modules
+dist
+coverage
+.vite
+
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+
+*.local
+.env.local
+.env.*.local
