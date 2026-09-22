@@ -35,8 +35,9 @@ export default defineConfig({
       reporter: [['text', { skipFull: false }], 'text-summary', 'json-summary', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
-      // The suite covers 100% of `src`; the margin is there for rounding, not for
-      // a regression budget.
+      // The suite covers every statement, line and function in `src`. The one branch
+      // it misses is the null guard React's typing demands on a ref that is always
+      // attached, so the margin is there for that, not as a regression budget.
       thresholds: {
         statements: 98,
         branches: 98,
