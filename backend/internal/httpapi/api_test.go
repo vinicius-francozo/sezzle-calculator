@@ -162,6 +162,18 @@ func TestErrorCatalogue(t *testing.T) {
 			wantMessage: "Request body must be a JSON object",
 		},
 		{
+			// A top-level null decodes into the zero request rather than
+			// failing, so it is caught by validation: still a 400, still a
+			// stable code, still an accurate message.
+			name:        "top-level null",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `null`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeValidationError,
+			wantMessage: `Field "operation" is required`,
+		},
+		{
 			name:        "missing operation",
 			method:      http.MethodPost,
 			path:        pathCalculate,
