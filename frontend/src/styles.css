@@ -116,8 +116,9 @@ body {
   grid-column: span 2;
 }
 
+/* `=` fills the rest of the operator column, so the bottom row has no empty cell. */
 .key--span-rows {
-  grid-row: span 2;
+  grid-row: span 3;
 }
 
 .key:hover:not(:disabled) {
