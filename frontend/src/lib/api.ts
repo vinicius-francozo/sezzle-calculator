@@ -6,7 +6,9 @@ import {
   type ServerErrorCode,
 } from '../types/api';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+// `||`, not `??`: an empty `.env` entry or an empty Docker build arg inlines as `''`,
+// which would send every call to a same-origin `/v1/calculate` that does not exist.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const NETWORK_FAILURE_MESSAGE = 'Could not reach the calculator service';
 const UNEXPECTED_RESPONSE_MESSAGE = 'The calculator service returned an unexpected response';

@@ -28,8 +28,18 @@ async function expectApiError(promise: Promise<unknown>): Promise<ApiError> {
   throw new Error('expected the call to reject with an ApiError');
 }
 
+/** Reloads the module with a stubbed environment, since the base URL is read once. */
+async function calculateWithBaseUrl(value: string | undefined): Promise<void> {
+  vi.resetModules();
+  vi.stubEnv('VITE_API_BASE_URL', value);
+  const { calculate: reloaded } = await import('./api');
+  await reloaded(REQUEST);
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.resetModules();
 });
 
 describe('calculate', () => {
@@ -102,11 +112,39 @@ describe('calculate', () => {
     expect(error.code).toBe('UNEXPECTED_ERROR');
   });
 
-  it('rejects a success response without a finite result', async () => {
+  it('rejects a success response whose result is not a number', async () => {
     respondWith(200, { operation: 'divide', operands: [12, 4], result: 'three' });
 
     const error = await expectApiError(calculate(REQUEST));
 
     expect(error.code).toBe('UNEXPECTED_ERROR');
+  });
+
+  it('rejects a success response whose result is a number but not finite', async () => {
+    // JSON has no Infinity, but an out-of-range literal parses into one.
+    respondWithText(200, '{"operation":"divide","operands":[12,4],"result":1e999}');
+
+    const error = await expectApiError(calculate(REQUEST));
+
+    expect(error.code).toBe('UNEXPECTED_ERROR');
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['set to an empty string', ''],
+  ])('posts to the same-origin /api when the base URL is %s', async (_, value) => {
+    respondWith(200, { result: 3 });
+
+    await calculateWithBaseUrl(value);
+
+    expect(fetch).toHaveBeenCalledWith('/api/v1/calculate', expect.anything());
+  });
+
+  it('posts to the configured base URL when one is set', async () => {
+    respondWith(200, { result: 3 });
+
+    await calculateWithBaseUrl('https://calc.example.test/api');
+
+    expect(fetch).toHaveBeenCalledWith('https://calc.example.test/api/v1/calculate', expect.anything());
   });
 });
