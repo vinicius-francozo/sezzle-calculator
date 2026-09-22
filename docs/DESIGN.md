@@ -308,3 +308,31 @@ with anything required.
 and the domain are shaped so that adding one is a registry entry plus a pure function — the
 extension point exists, it is simply not exercised. The API contract already documents them as
 backlog so the shape stays honest.
+
+---
+
+## D18 — Parallel agent tracks with a mandatory code review before merge
+
+**Decision.** The implementation is produced by a pipeline of agents rather than in one linear
+pass. Each track (backend, frontend, containers) runs in its own **git worktree and branch**, with
+a disjoint file scope so the branches cannot conflict. Every track follows the same cycle:
+
+```
+dev agent → review agent → findings? → fix agent → review agent → … → PASS → merge --no-ff
+```
+
+The review agent is a *different* agent from the one that wrote the code, runs a code-review pass
+at high effort over `main...<branch>`, checks the track's definition of done and the non-functional
+bar, runs the test suite for real, and is explicitly forbidden from fixing anything. Fixes go to a
+third agent, scoped to the reported findings only. The loop is bounded at three rounds before a
+human is asked.
+
+**Why.** Two independent gains. Throughput: the three tracks progress simultaneously, and a track's
+review starts the moment that track is done instead of waiting for the others. Quality: the thing
+this assessment actually grades is code quality, so no code reaches `main` without a review by an
+agent that did not write it and has no stake in defending it. Worktrees are what make both possible
+at once — parallel branches with real, isolated working directories over one repository.
+
+**Traceability.** The briefs sent to every agent are committed verbatim in
+`prompts/02-agent-briefs.md`, since the assessment asks for the prompts used. Merges are `--no-ff`,
+so the history shows each track as a unit.

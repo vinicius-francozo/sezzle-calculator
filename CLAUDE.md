@@ -240,3 +240,27 @@ A coverage summary is committed to the repository and referenced from the README
 - **All repository content is written in English** (code, comments, docs, commit messages), even
   though the working conversation is in Brazilian Portuguese.
 - Run the tests before each commit; never commit a red suite.
+
+---
+
+## 9. Development workflow (decision D18)
+
+Implementation runs as parallel agent tracks, one git worktree and branch each, with disjoint file
+scopes:
+
+| Track | Worktree | Branch | Owns |
+| --- | --- | --- | --- |
+| Backend | `../sezzle-calculator-backend` | `feat/backend` | `backend/**` minus Docker files |
+| Frontend | `../sezzle-calculator-frontend` | `feat/frontend` | `frontend/**` minus Docker/nginx files |
+| Containers | `../sezzle-calculator-containers` | `feat/containers` | `compose.yaml`, `*/Dockerfile`, `*/.dockerignore`, `frontend/nginx.conf`, `scripts/coverage.sh` |
+
+`docs/**`, `CLAUDE.md` and `prompts/**` belong to the orchestrator only — no track writes there.
+
+Every track follows `dev → review → fix → review → … → PASS → merge --no-ff`. The reviewer is
+always a different agent from the author, reviews `main...<branch>`, verifies the definition of
+done in `docs/PLAN.md` plus §3 of this document, runs the suite for real, and never fixes anything
+itself. Fixes are scoped strictly to the reported findings. Three rounds maximum before escalating
+to the user.
+
+Agent briefs are committed verbatim to `prompts/02-agent-briefs.md` — they are prompts, and the
+assessment asks for the prompts used.
