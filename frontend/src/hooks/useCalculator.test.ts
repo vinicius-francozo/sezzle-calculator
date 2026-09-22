@@ -42,8 +42,12 @@ function deferred<T>() {
 }
 
 const add: CalculatorAction = { type: 'operator', operator: 'add' };
+const subtract: CalculatorAction = { type: 'operator', operator: 'subtract' };
 const multiply: CalculatorAction = { type: 'operator', operator: 'multiply' };
 const divide: CalculatorAction = { type: 'operator', operator: 'divide' };
+const power: CalculatorAction = { type: 'operator', operator: 'power' };
+const percent: CalculatorAction = { type: 'operator', operator: 'percent' };
+const sqrt: CalculatorAction = { type: 'unary', operation: 'sqrt' };
 const equals: CalculatorAction = { type: 'equals' };
 const clear: CalculatorAction = { type: 'clear' };
 
@@ -102,10 +106,11 @@ describe('calculatorReducer', () => {
     });
   });
 
-  it.each([
+  it.each<[string, CalculatorAction[]]>([
     ['no operator', [...type('12'), equals]],
     ['no right-hand operand', [...type('12'), add, equals]],
     ['nothing typed at all', [equals]],
+    ['a square root that stands alone', [...type('9'), sqrt, { type: 'resolved', result: 3 }]],
   ])('does nothing on equals with %s', (_, actions) => {
     expect(run(actions).pending).toBeNull();
   });
@@ -282,6 +287,103 @@ describe('calculatorReducer', () => {
     expect(state).toEqual(initialState);
   });
 
+  it('requests a power like any other binary operation', () => {
+    const state = run([...type('2'), power, ...type('10'), equals]);
+
+    expect(state.pending).toEqual({
+      operation: 'power',
+      operands: [2, 10],
+      expression: '2 ^ 10',
+      nextOperator: null,
+    });
+  });
+
+  it('requests a percentage as "a% of b"', () => {
+    const state = run([...type('15'), percent, ...type('200'), equals]);
+
+    expect(state.pending).toEqual({
+      operation: 'percent',
+      operands: [15, 200],
+      expression: '15 % 200',
+      nextOperator: null,
+    });
+  });
+
+  it('sends the square root of the entry at once, with a single operand and no equals', () => {
+    const state = run([...type('9'), sqrt]);
+
+    expect(state.pending).toEqual({
+      operation: 'sqrt',
+      operands: [9],
+      expression: '√9',
+      nextOperator: null,
+    });
+  });
+
+  it('replaces the entry with the root and records it in the history', () => {
+    const state = run([...type('9'), sqrt, { type: 'resolved', result: 3 }]);
+
+    expect(state).toMatchObject({
+      entry: { text: '3', value: 3 },
+      accumulator: null,
+      operator: null,
+      overwriteEntry: true,
+      pending: null,
+    });
+    expect(state.history).toEqual([{ id: 1, expression: '√9', result: '3' }]);
+    expect(formatExpression(state)).toBe('3');
+  });
+
+  it('starts a fresh entry when a digit follows a square root', () => {
+    const state = run([...type('9'), sqrt, { type: 'resolved', result: 3 }, ...type('7')]);
+
+    expect(state.entry).toEqual({ text: '7', value: 7 });
+  });
+
+  it('chains square roots, so 81 √ √ is 3', () => {
+    const rooted = run([...type('81'), sqrt, { type: 'resolved', result: 9 }, sqrt]);
+
+    expect(rooted.pending).toMatchObject({ operation: 'sqrt', operands: [9] });
+    expect(run([{ type: 'resolved', result: 3 }], rooted).entry.text).toBe('3');
+  });
+
+  it('leaves a pending operation waiting and replaces its right-hand operand', () => {
+    const rooted = run([...type('2'), add, ...type('9'), sqrt, { type: 'resolved', result: 3 }]);
+
+    expect(rooted).toMatchObject({ accumulator: 2, operator: 'add', pending: null });
+    expect(formatExpression(rooted)).toBe('2 + 3');
+    // The waiting operation now reads 2 + 3, so equals gives 5 rather than 11.
+    expect(run([equals], rooted).pending).toMatchObject({ operation: 'add', operands: [2, 3] });
+  });
+
+  it('resolves the waiting operation when an operator follows a square root', () => {
+    const rooted = run([...type('2'), add, ...type('9'), sqrt, { type: 'resolved', result: 3 }]);
+
+    expect(run([multiply], rooted).pending).toMatchObject({
+      operation: 'add',
+      operands: [2, 3],
+      nextOperator: 'multiply',
+    });
+  });
+
+  it('roots the number on screen when no right-hand operand was typed', () => {
+    const state = run([...type('2'), add, sqrt]);
+
+    expect(state.pending).toMatchObject({ operation: 'sqrt', operands: [2], expression: '√2' });
+  });
+
+  it('shows a failed square root inline and leaves the history untouched', () => {
+    const negative = run([...type('0'), subtract, ...type('9'), equals, { type: 'resolved', result: -9 }]);
+    const message = 'Square root of a negative number is undefined';
+
+    const state = run([sqrt, { type: 'rejected', message }], negative);
+
+    expect(state.error).toBe(message);
+    expect(state.pending).toBeNull();
+    expect(state.history).toEqual(negative.history);
+    expect(formatExpression(state)).toBe('-9');
+  });
+
   it('ignores input while a request is in flight, except clear', () => {
     const inFlight = run([...type('2'), add, ...type('3'), equals]);
 
@@ -373,6 +475,21 @@ describe('useCalculator', () => {
     expect(calculateMock).toHaveBeenNthCalledWith(
       2,
       { operation: 'multiply', operands: [1 / 3, 3] },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('posts one operand for the square root and keeps the operation it interrupted', async () => {
+    calculateMock.mockResolvedValue({ result: 3 });
+    const { result } = renderHook(() => useCalculator());
+
+    act(() => {
+      [...type('2'), add, ...type('9'), sqrt].forEach(result.current.dispatch);
+    });
+
+    await waitFor(() => expect(result.current.expression).toBe('2 + 3'));
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'sqrt', operands: [9] },
       expect.any(AbortSignal),
     );
   });

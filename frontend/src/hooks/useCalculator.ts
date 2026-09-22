@@ -2,7 +2,7 @@ import { useEffect, useReducer, type Dispatch } from 'react';
 import { ApiError, calculate } from '../lib/api';
 import { SIGNIFICANT_DIGITS, formatNumber } from '../lib/format';
 import { OPERATOR_SYMBOLS } from '../lib/operations';
-import type { Operation } from '../types/api';
+import type { BinaryOperation, Operation, UnaryOperation } from '../types/api';
 
 /** A calculation that succeeded, kept for the history list (see DESIGN.md D12). */
 export interface HistoryEntry {
@@ -15,10 +15,11 @@ export interface HistoryEntry {
 /** An operation handed to the API. Its presence means a request is in flight. */
 export interface PendingOperation {
   readonly operation: Operation;
-  readonly operands: readonly [number, number];
+  /** One operand or two, as the operation's arity demands (see docs/api.md). */
+  readonly operands: readonly [number] | readonly [number, number];
   readonly expression: string;
   /** Operator to chain onto the result, when an operator key triggered the request. */
-  readonly nextOperator: Operation | null;
+  readonly nextOperator: BinaryOperation | null;
 }
 
 /**
@@ -36,9 +37,15 @@ export interface CalculatorState {
   readonly entry: Entry;
   /** The left-hand operand: the previous result, or the entry when the operator was pressed. */
   readonly accumulator: number | null;
-  readonly operator: Operation | null;
+  readonly operator: BinaryOperation | null;
   /** Whether the next digit starts a fresh entry instead of appending to it. */
   readonly overwriteEntry: boolean;
+  /**
+   * Whether the entry is an operand an operator or `=` may act on. It is the opposite
+   * of {@link CalculatorState.overwriteEntry} everywhere but after a unary operation,
+   * which settles a complete operand that the next digit still replaces (DESIGN.md D24).
+   */
+  readonly entryIsOperand: boolean;
   readonly history: readonly HistoryEntry[];
   readonly error: string | null;
   readonly pending: PendingOperation | null;
@@ -47,7 +54,8 @@ export interface CalculatorState {
 export type CalculatorAction =
   | { type: 'digit'; digit: string }
   | { type: 'decimal' }
-  | { type: 'operator'; operator: Operation }
+  | { type: 'operator'; operator: BinaryOperation }
+  | { type: 'unary'; operation: UnaryOperation }
   | { type: 'equals' }
   | { type: 'clear' }
   | { type: 'resolved'; result: number }
@@ -77,6 +85,7 @@ export const initialState: CalculatorState = {
   accumulator: null,
   operator: null,
   overwriteEntry: true,
+  entryIsOperand: false,
   history: [],
   error: null,
   pending: null,
@@ -113,6 +122,8 @@ function applyInput(state: CalculatorState, action: InputAction): CalculatorStat
       return appendDecimal(state);
     case 'operator':
       return applyOperator(state, action.operator);
+    case 'unary':
+      return applyUnary(state, action.operation);
     case 'equals':
       return applyEquals(state);
   }
@@ -128,16 +139,29 @@ function resultEntry(value: number): Entry {
   return { text: formatNumber(value), value };
 }
 
+/**
+ * withTypedEntry puts text the user is typing on screen: further digits append to it,
+ * it counts as an operand, and it clears whatever error the previous attempt left.
+ */
+function withTypedEntry(state: CalculatorState, text: string): CalculatorState {
+  return {
+    ...state,
+    entry: typedEntry(text),
+    overwriteEntry: false,
+    entryIsOperand: true,
+    error: null,
+  };
+}
+
 function appendDigit(state: CalculatorState, digit: string): CalculatorState {
   if (state.overwriteEntry || state.entry.text === '0') {
-    return { ...state, entry: typedEntry(digit), overwriteEntry: false, error: null };
+    return withTypedEntry(state, digit);
   }
   // The entry is capped so the text on screen and the value behind it always agree.
   if (digitsIn(state.entry.text) >= MAX_ENTRY_DIGITS) {
     return state;
   }
-  const text = state.entry.text + digit;
-  return { ...state, entry: typedEntry(text), overwriteEntry: false, error: null };
+  return withTypedEntry(state, state.entry.text + digit);
 }
 
 function digitsIn(text: string): number {
@@ -146,18 +170,18 @@ function digitsIn(text: string): number {
 
 function appendDecimal(state: CalculatorState): CalculatorState {
   if (state.overwriteEntry) {
-    return { ...state, entry: typedEntry('0.'), overwriteEntry: false, error: null };
+    return withTypedEntry(state, '0.');
   }
   // A second decimal point in the same operand is ignored.
   if (state.entry.text.includes('.')) {
     return state;
   }
-  return { ...state, entry: typedEntry(`${state.entry.text}.`), error: null };
+  return withTypedEntry(state, `${state.entry.text}.`);
 }
 
-function applyOperator(state: CalculatorState, operator: Operation): CalculatorState {
+function applyOperator(state: CalculatorState, operator: BinaryOperation): CalculatorState {
   // An operator pressed twice in a row replaces the pending one.
-  if (state.operator !== null && state.overwriteEntry) {
+  if (state.operator !== null && !state.entryIsOperand) {
     return { ...state, operator, error: null };
   }
   // A complete expression is resolved first, so the running total stays on screen.
@@ -169,13 +193,14 @@ function applyOperator(state: CalculatorState, operator: Operation): CalculatorS
     accumulator: state.entry.value,
     operator,
     overwriteEntry: true,
+    entryIsOperand: false,
     error: null,
   };
 }
 
 function applyEquals(state: CalculatorState): CalculatorState {
-  // Incomplete expression: no operator, or no right-hand operand typed yet.
-  if (state.operator === null || state.accumulator === null || state.overwriteEntry) {
+  // Incomplete expression: no operator, or no right-hand operand yet.
+  if (state.operator === null || state.accumulator === null || !state.entryIsOperand) {
     return state;
   }
   return request(state, state.operator, state.accumulator, null);
@@ -183,9 +208,9 @@ function applyEquals(state: CalculatorState): CalculatorState {
 
 function request(
   state: CalculatorState,
-  operation: Operation,
+  operation: BinaryOperation,
   left: number,
-  nextOperator: Operation | null,
+  nextOperator: BinaryOperation | null,
 ): CalculatorState {
   const right = state.entry.value;
   const expression = `${formatNumber(left)} ${OPERATOR_SYMBOLS[operation]} ${formatNumber(right)}`;
@@ -193,6 +218,25 @@ function request(
     ...state,
     error: null,
     pending: { operation, operands: [left, right], expression, nextOperator },
+  };
+}
+
+/**
+ * applyUnary sends the number on screen away on its own. It is the only key that
+ * asks for a result without `=`, because a unary operation has no second operand
+ * to wait for (see DESIGN.md D24).
+ */
+function applyUnary(state: CalculatorState, operation: UnaryOperation): CalculatorState {
+  const operand = state.entry.value;
+  return {
+    ...state,
+    error: null,
+    pending: {
+      operation,
+      operands: [operand],
+      expression: `${OPERATOR_SYMBOLS[operation]}${formatNumber(operand)}`,
+      nextOperator: null,
+    },
   };
 }
 
@@ -207,16 +251,30 @@ function settle(
     expression: pending.expression,
     result: entry.text,
   };
-  return {
+  const settled: CalculatorState = {
     ...state,
     entry,
-    accumulator: pending.nextOperator === null ? null : result,
-    operator: pending.nextOperator,
     overwriteEntry: true,
     history: [...state.history, recorded].slice(-HISTORY_LIMIT),
     error: null,
     pending: null,
   };
+  // A unary operation replaces the entry and nothing else: a binary operation that was
+  // already waiting keeps waiting, with this result as its right-hand operand.
+  if (isUnary(pending)) {
+    return { ...settled, entryIsOperand: true };
+  }
+  return {
+    ...settled,
+    accumulator: pending.nextOperator === null ? null : result,
+    operator: pending.nextOperator,
+    entryIsOperand: false,
+  };
+}
+
+/** Whether the pending operation is unary — arity is a property of the operation (docs/api.md). */
+function isUnary(pending: PendingOperation): boolean {
+  return pending.operands.length === 1;
 }
 
 /**
@@ -229,7 +287,7 @@ function nextHistoryId(history: readonly HistoryEntry[]): number {
 
 function fail(state: CalculatorState, message: string): CalculatorState {
   // The failed expression stays on screen; the next digit replaces the offending operand.
-  return { ...state, overwriteEntry: true, error: message, pending: null };
+  return { ...state, overwriteEntry: true, entryIsOperand: false, error: message, pending: null };
 }
 
 /** formatExpression renders the line the user is currently working on. */
@@ -242,9 +300,9 @@ export function formatExpression(state: CalculatorState): string {
   }
   const left = formatNumber(state.accumulator);
   const symbol = OPERATOR_SYMBOLS[state.operator];
-  // The right-hand operand is shown while it is being typed, and kept on screen
-  // when it made the calculation fail.
-  const showsEntry = !state.overwriteEntry || state.error !== null;
+  // The right-hand operand is shown once it exists — typed, or settled by a unary
+  // operation — and is kept on screen when it made the calculation fail.
+  const showsEntry = state.entryIsOperand || state.error !== null;
   return showsEntry ? `${left} ${symbol} ${state.entry.text}` : `${left} ${symbol}`;
 }
 
