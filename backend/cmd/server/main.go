@@ -25,20 +25,22 @@ const (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	if err := run(context.Background(), logger); err != nil {
+	if err := run(context.Background(), logger, listenAddress()); err != nil {
 		logger.Error("server stopped", "error", err)
 		os.Exit(1)
 	}
 }
 
-// run owns the lifecycle of the server: it serves until SIGINT or SIGTERM
-// arrives, then drains in-flight requests before returning.
-func run(ctx context.Context, logger *slog.Logger) error {
+// run owns the lifecycle of the server: it listens on address and serves
+// until SIGINT or SIGTERM arrives, then drains in-flight requests before
+// returning. The address is a parameter, and not read from the environment
+// here, so that a test can run the whole lifecycle on an ephemeral port.
+func run(ctx context.Context, logger *slog.Logger, address string) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	server := &http.Server{
-		Addr:              listenAddress(),
+		Addr:              address,
 		Handler:           httpapi.NewHandler(logger),
 		ReadTimeout:       readTimeout,
 		ReadHeaderTimeout: readTimeout,
