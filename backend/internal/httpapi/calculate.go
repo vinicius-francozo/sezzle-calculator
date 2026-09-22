@@ -62,8 +62,8 @@ func decodeCalculateRequest(w http.ResponseWriter, r *http.Request) (calculateRe
 	// A body must hold exactly one JSON object. What follows the object can
 	// itself trip the size limit, and that has to keep being reported as a
 	// size limit rather than as trailing content.
-	var maxBytes *http.MaxBytesError
 	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		var maxBytes *http.MaxBytesError
 		if errors.As(err, &maxBytes) {
 			return req, decodeError(err)
 		}
