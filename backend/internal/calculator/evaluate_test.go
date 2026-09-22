@@ -18,6 +18,9 @@ func TestEvaluate(t *testing.T) {
 		{name: "subtract", op: calculator.OpSubtract, operands: []float64{5, 3}, want: 2},
 		{name: "multiply", op: calculator.OpMultiply, operands: []float64{4, 2.5}, want: 10},
 		{name: "divide", op: calculator.OpDivide, operands: []float64{12, 4}, want: 3},
+		{name: "power", op: calculator.OpPower, operands: []float64{2, 10}, want: 1024},
+		{name: "sqrt", op: calculator.OpSqrt, operands: []float64{9}, want: 3},
+		{name: "percent", op: calculator.OpPercent, operands: []float64{15, 200}, want: 30},
 	}
 
 	for _, test := range tests {
@@ -46,9 +49,23 @@ func TestEvaluateErrors(t *testing.T) {
 		{name: "too few operands", op: calculator.OpAdd, operands: []float64{1}, wantErr: calculator.ErrInvalidOperandCount},
 		{name: "too many operands", op: calculator.OpAdd, operands: []float64{1, 2, 3}, wantErr: calculator.ErrInvalidOperandCount},
 		{name: "no operands", op: calculator.OpDivide, operands: nil, wantErr: calculator.ErrInvalidOperandCount},
+		{name: "power with one operand", op: calculator.OpPower, operands: []float64{2}, wantErr: calculator.ErrInvalidOperandCount},
+		{name: "percent with one operand", op: calculator.OpPercent, operands: []float64{15}, wantErr: calculator.ErrInvalidOperandCount},
+		// sqrt is the only unary operation, so it is the only one an extra
+		// operand can break rather than a missing one.
+		{name: "sqrt with two operands", op: calculator.OpSqrt, operands: []float64{9, 1}, wantErr: calculator.ErrInvalidOperandCount},
+		{name: "sqrt with no operands", op: calculator.OpSqrt, operands: nil, wantErr: calculator.ErrInvalidOperandCount},
 		{name: "division by zero", op: calculator.OpDivide, operands: []float64{12, 0}, wantErr: calculator.ErrDivisionByZero},
 		{name: "overflow to infinity", op: calculator.OpMultiply, operands: []float64{1e308, 10}, wantErr: calculator.ErrOverflow},
 		{name: "overflow by addition", op: calculator.OpAdd, operands: []float64{1.7e308, 1.7e308}, wantErr: calculator.ErrOverflow},
+		{name: "square root of a negative number", op: calculator.OpSqrt, operands: []float64{-9}, wantErr: calculator.ErrUndefinedResult},
+		{name: "power overflowing to infinity", op: calculator.OpPower, operands: []float64{10, 400}, wantErr: calculator.ErrOverflow},
+		// Zero to a negative power is +Inf and a negative base raised to a
+		// fractional exponent is NaN. The contract answers both with OVERFLOW,
+		// whose row covers any result that is not a finite number.
+		{name: "zero to a negative power", op: calculator.OpPower, operands: []float64{0, -1}, wantErr: calculator.ErrOverflow},
+		{name: "power with no real result", op: calculator.OpPower, operands: []float64{-8, 1.0 / 3}, wantErr: calculator.ErrOverflow},
+		{name: "percent overflowing to infinity", op: calculator.OpPercent, operands: []float64{1e308, 1e308}, wantErr: calculator.ErrOverflow},
 	}
 
 	for _, test := range tests {
@@ -79,6 +96,18 @@ func TestEvaluateErrorDetails(t *testing.T) {
 		}
 		if want := `unsupported operation "tangent"`; unsupported.Error() != want {
 			t.Errorf("Error() = %q, want %q", unsupported.Error(), want)
+		}
+	})
+
+	t.Run("operand count of a unary operation", func(t *testing.T) {
+		_, err := calculator.Evaluate(calculator.OpSqrt, []float64{9, 1})
+
+		var count *calculator.OperandCountError
+		if !errors.As(err, &count) {
+			t.Fatalf("error = %v, want an *OperandCountError", err)
+		}
+		if count.Operation != calculator.OpSqrt || count.Want != 1 || count.Got != 2 {
+			t.Errorf("got %+v, want {Operation:sqrt Want:1 Got:2}", *count)
 		}
 	})
 

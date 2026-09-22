@@ -47,6 +47,12 @@ func TestCalculateSuccess(t *testing.T) {
 		{name: "subtract", body: `{"operation":"subtract","operands":[5,3]}`, wantOperation: calculator.OpSubtract, wantOperands: []float64{5, 3}, wantResult: 2},
 		{name: "multiply", body: `{"operation":"multiply","operands":[4,2.5]}`, wantOperation: calculator.OpMultiply, wantOperands: []float64{4, 2.5}, wantResult: 10},
 		{name: "divide", body: `{"operation":"divide","operands":[12,4]}`, wantOperation: calculator.OpDivide, wantOperands: []float64{12, 4}, wantResult: 3},
+		{name: "power", body: `{"operation":"power","operands":[2,10]}`, wantOperation: calculator.OpPower, wantOperands: []float64{2, 10}, wantResult: 1024},
+		{name: "percent", body: `{"operation":"percent","operands":[15,200]}`, wantOperation: calculator.OpPercent, wantOperands: []float64{15, 200}, wantResult: 30},
+		// The one unary operation: a single-element operands array travels
+		// through the contract unchanged, which is why arity is a property of
+		// the operation rather than of the request shape.
+		{name: "sqrt", body: `{"operation":"sqrt","operands":[9]}`, wantOperation: calculator.OpSqrt, wantOperands: []float64{9}, wantResult: 3},
 		{name: "negative operands", body: `{"operation":"add","operands":[-2,-3]}`, wantOperation: calculator.OpAdd, wantOperands: []float64{-2, -3}, wantResult: -5},
 	}
 
@@ -223,6 +229,18 @@ func TestErrorCatalogue(t *testing.T) {
 			wantMessage: `Operation "add" requires 2 operands, got 1`,
 		},
 		{
+			// sqrt takes one operand, so it is the only operation a second
+			// operand can break. The message is the arity of the operation,
+			// not a fixed "two operands" assumption.
+			name:        "wrong arity on the unary operation",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"sqrt","operands":[9,1]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeValidationError,
+			wantMessage: `Operation "sqrt" requires 1 operands, got 2`,
+		},
+		{
 			name:        "unsupported operation",
 			method:      http.MethodPost,
 			path:        pathCalculate,
@@ -245,6 +263,37 @@ func TestErrorCatalogue(t *testing.T) {
 			method:      http.MethodPost,
 			path:        pathCalculate,
 			body:        `{"operation":"multiply","operands":[1e308,10]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeOverflow,
+			wantMessage: "Overflow: the result could not be calculated",
+		},
+		{
+			name:        "square root of a negative number",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"sqrt","operands":[-9]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeUndefinedResult,
+			wantMessage: "Square root of a negative number is undefined",
+		},
+		{
+			// A negative base raised to a fractional exponent has no real
+			// result, so math.Pow returns NaN. encoding/json cannot write NaN,
+			// so anything short of rejecting it here would answer 200 with an
+			// empty body instead of the documented 400.
+			name:        "power with no real result",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"power","operands":[-8,0.3333333333333333]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeOverflow,
+			wantMessage: "Overflow: the result could not be calculated",
+		},
+		{
+			name:        "zero raised to a negative power",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"power","operands":[0,-1]}`,
 			wantStatus:  http.StatusBadRequest,
 			wantCode:    codeOverflow,
 			wantMessage: "Overflow: the result could not be calculated",
