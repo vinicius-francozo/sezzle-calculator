@@ -21,14 +21,15 @@ func NewHandler(logger *slog.Logger) http.Handler {
 //
 // A path is registered twice — once with its method and once without — so that
 // a known route reached with the wrong method answers 405 in the contract's
-// error envelope instead of net/http's plain-text default.
+// error envelope instead of net/http's plain-text default. OPTIONS is in every
+// Allow list because CORS answers preflight for any path.
 func routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST "+pathCalculate, handleCalculate)
-	mux.HandleFunc(pathCalculate, handleMethodNotAllowed)
+	mux.HandleFunc(pathCalculate, methodNotAllowed("POST, OPTIONS"))
 	mux.HandleFunc("GET "+pathHealth, handleHealth)
-	mux.HandleFunc(pathHealth, handleMethodNotAllowed)
+	mux.HandleFunc(pathHealth, methodNotAllowed("GET, OPTIONS"))
 	mux.HandleFunc("/", handleNotFound)
 
 	return mux
@@ -58,8 +59,14 @@ func handleNotFound(w http.ResponseWriter, _ *http.Request) {
 	writeError(w, newAPIError(http.StatusNotFound, codeNotFound, "Unknown route"))
 }
 
-func handleMethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, newAPIError(http.StatusMethodNotAllowed, codeMethodNotAllowed, "Method not allowed for this route"))
+// methodNotAllowed answers a known route reached with a method it does not
+// serve. allow is the value of the Allow header, which RFC 9110 §15.5.6 makes
+// mandatory on a 405 and which differs from route to route.
+func methodNotAllowed(allow string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allow)
+		writeError(w, newAPIError(http.StatusMethodNotAllowed, codeMethodNotAllowed, "Method not allowed for this route"))
+	}
 }
 
 // healthResponse is the body of GET /api/v1/health.

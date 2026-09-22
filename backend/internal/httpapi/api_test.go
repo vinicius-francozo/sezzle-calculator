@@ -88,6 +88,7 @@ func TestErrorCatalogue(t *testing.T) {
 		wantStatus  int
 		wantCode    string
 		wantMessage string
+		wantAllow   string
 	}{
 		{
 			name:       "malformed JSON",
@@ -236,6 +237,7 @@ func TestErrorCatalogue(t *testing.T) {
 			path:       pathCalculate,
 			wantStatus: http.StatusMethodNotAllowed,
 			wantCode:   codeMethodNotAllowed,
+			wantAllow:  "POST, OPTIONS",
 		},
 		{
 			name:       "wrong method on health",
@@ -243,6 +245,7 @@ func TestErrorCatalogue(t *testing.T) {
 			path:       pathHealth,
 			wantStatus: http.StatusMethodNotAllowed,
 			wantCode:   codeMethodNotAllowed,
+			wantAllow:  "GET, OPTIONS",
 		},
 	}
 
@@ -263,6 +266,10 @@ func TestErrorCatalogue(t *testing.T) {
 			}
 			if test.wantMessage != "" && got.Error.Message != test.wantMessage {
 				t.Errorf("message = %q, want %q", got.Error.Message, test.wantMessage)
+			}
+			// RFC 9110 §15.5.6 makes Allow mandatory on a 405.
+			if allow := recorder.Header().Get("Allow"); allow != test.wantAllow {
+				t.Errorf("Allow = %q, want %q", allow, test.wantAllow)
 			}
 		})
 	}
