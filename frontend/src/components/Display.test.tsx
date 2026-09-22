@@ -44,6 +44,24 @@ describe('Display', () => {
     expect(screen.getByText(/5 × 4/)).toBe(survivor);
   });
 
+  it('scrolls the history down so the newest entry stays in view', () => {
+    const first = { id: 1, expression: '2 + 3', result: '5' };
+    const { rerender } = render(<Display history={[first]} expression="5" error={null} />);
+    const list = screen.getByTestId('history');
+    // jsdom lays nothing out, so the overflow a browser would produce is stated here.
+    Object.defineProperty(list, 'scrollHeight', { value: 400, configurable: true });
+
+    rerender(
+      <Display
+        history={[first, { id: 2, expression: '5 × 4', result: '20' }]}
+        expression="20"
+        error={null}
+      />,
+    );
+
+    expect(list.scrollTop).toBe(400);
+  });
+
   it('renders the error inline, with the failed expression still on screen', () => {
     render(
       <Display history={[]} expression="12 ÷ 0" error="Division by zero is undefined" />,
