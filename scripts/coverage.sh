@@ -40,18 +40,36 @@ docker_run() {
         "$@"
 }
 
+# Everything the command prints is the report.
+whole_output() {
+    cat
+}
+
+# Only the coverage section is. Vitest's run log above it -- the order the test
+# files finish in, every per-test duration, which slow tests it decides to
+# expand -- differs between two runs that measured exactly the same code, so
+# capturing it would churn the committed report on every regeneration. The
+# section itself is the point of the artifact and is kept whole: the per-file
+# table and the summary totals printed under it.
+coverage_section() {
+    sed -n '/Coverage report from/,$p'
+}
+
 # Runs a report command with its output going to the terminal and to a file at
 # once. Both halves matter: a failing suite must not be silent, and it must not
 # replace a committed report with its own FAIL output, so the capture is taken
-# aside and only promoted after the command has succeeded. POSIX sh has no
-# PIPESTATUS, hence the marker file to carry the status out of the pipeline.
+# aside, passed through $filter and only then promoted over the report. POSIX
+# sh has no PIPESTATUS, hence the marker file to carry the status out of the
+# pipeline.
 report_to() {
     report=$1
-    shift
+    filter=$2
+    shift 2
     capture="$tmp_dir/capture"
+    promoted="$tmp_dir/promoted"
     failed="$tmp_dir/failed"
 
-    rm -f "$capture" "$failed"
+    rm -f "$capture" "$promoted" "$failed"
     { "$@" || : >"$failed"; } | tee "$capture"
 
     if [ -f "$failed" ]; then
@@ -59,11 +77,17 @@ report_to() {
         return 1
     fi
 
-    mv "$capture" "$report"
+    "$filter" <"$capture" >"$promoted"
+    if [ ! -s "$promoted" ]; then
+        echo "no report in the output; $report was left unchanged" >&2
+        return 1
+    fi
+
+    mv "$promoted" "$report"
 }
 
 echo "==> Backend tests and coverage ($GO_IMAGE)"
-report_to "$out_dir/backend.txt" \
+report_to "$out_dir/backend.txt" whole_output \
     docker_run \
         --volume "$repo_root/backend:/work" \
         --env GOCACHE=/tmp/go-build \
@@ -81,10 +105,9 @@ docker_run \
 
 # NO_COLOR is what keeps the report readable: Vitest colours its output even
 # when stdout is a pipe, and the escape sequences survive into the committed
-# file. The whole run is captured, not just the per-file table, because at 100%
-# coverage the interesting numbers are in the summary the table is followed by.
+# file.
 echo "==> Frontend tests and coverage ($NODE_IMAGE)"
-report_to "$out_dir/frontend.txt" \
+report_to "$out_dir/frontend.txt" coverage_section \
     docker_run \
         --volume "$repo_root/frontend:/work" \
         --env npm_config_cache=/tmp/npm \
