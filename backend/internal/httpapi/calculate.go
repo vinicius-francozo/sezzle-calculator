@@ -59,8 +59,14 @@ func decodeCalculateRequest(w http.ResponseWriter, r *http.Request) (calculateRe
 	if err := decoder.Decode(&req); err != nil {
 		return req, decodeError(err)
 	}
-	// A body must hold exactly one JSON object.
+	// A body must hold exactly one JSON object. What follows the object can
+	// itself trip the size limit, and that has to keep being reported as a
+	// size limit rather than as trailing content.
+	var maxBytes *http.MaxBytesError
 	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		if errors.As(err, &maxBytes) {
+			return req, decodeError(err)
+		}
 		return req, newAPIError(http.StatusBadRequest, codeInvalidJSON, "Request body must contain a single JSON object")
 	}
 	return req, validateCalculateRequest(req)
@@ -101,6 +107,11 @@ func decodeError(err error) *apiError {
 	case errors.As(err, &typeError) && typeError.Field != "":
 		return newAPIError(http.StatusBadRequest, codeValidationError,
 			fmt.Sprintf("Field %q has the wrong type", typeError.Field))
+	case errors.As(err, &typeError):
+		// An empty Field means the mismatch is the top-level value itself:
+		// the body is valid JSON, it is just not an object.
+		return newAPIError(http.StatusBadRequest, codeInvalidJSON,
+			"Request body must be a JSON object")
 	default:
 		// Syntax errors, an empty body and unknown fields: under strict
 		// decoding none of them is a body this endpoint can read.

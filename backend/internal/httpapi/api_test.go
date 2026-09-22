@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -121,12 +122,43 @@ func TestErrorCatalogue(t *testing.T) {
 			wantCode:   codeInvalidJSON,
 		},
 		{
-			name:       "body over the size limit",
-			method:     http.MethodPost,
-			path:       pathCalculate,
-			body:       `{"operation":"add","operands":[` + strings.Repeat("1,", maxRequestBodyBytes) + `1]}`,
-			wantStatus: http.StatusBadRequest,
-			wantCode:   codeInvalidJSON,
+			name:        "body over the size limit",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"add","operands":[` + strings.Repeat("1,", maxRequestBodyBytes) + `1]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeInvalidJSON,
+			wantMessage: fmt.Sprintf("Request body must not exceed %d bytes", maxRequestBodyBytes),
+		},
+		{
+			// The object decodes, and only what trails it crosses the limit:
+			// the second decode must still report the size, not the trailing
+			// content.
+			name:        "size limit reached after a complete object",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"add","operands":[1,2]}` + strings.Repeat(" ", maxRequestBodyBytes),
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeInvalidJSON,
+			wantMessage: fmt.Sprintf("Request body must not exceed %d bytes", maxRequestBodyBytes),
+		},
+		{
+			name:        "valid JSON that is not an object",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `[1,2]`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeInvalidJSON,
+			wantMessage: "Request body must be a JSON object",
+		},
+		{
+			name:        "valid JSON scalar",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `"hello"`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeInvalidJSON,
+			wantMessage: "Request body must be a JSON object",
 		},
 		{
 			name:        "missing operation",
