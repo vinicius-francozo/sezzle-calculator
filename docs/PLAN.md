@@ -91,9 +91,11 @@ needed.
 
 ## S6 — Backlog (only if the budget allows, in this order)
 
-1. `power`, `sqrt`, `percent` — one registry entry, one pure function and one test table each; plus
-   the matching buttons. Cheap by construction (see `DESIGN.md` D2/D4).
-2. Server-side expression parser as an additive `POST /api/v1/evaluate`, enabling precedence and
+1. `power`, `sqrt`, `percent` — **both layers**: one registry entry, one pure function and one test
+   table each in Go, plus the matching buttons and reducer actions in the UI. Cheap by construction
+   (see `DESIGN.md` D2/D4), but it stays out of the mandatory scope until S5 is done.
+2. GitHub Actions workflow running both test suites and publishing coverage on every push.
+3. Server-side expression parser as an additive `POST /api/v1/evaluate`, enabling precedence and
    parentheses (`DESIGN.md` D1).
 
 Nothing here starts before S5 is complete. An unfinished extra is worse than an absent one.

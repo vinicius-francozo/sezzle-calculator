@@ -288,3 +288,23 @@ with `errors.Is`. Never string matching on error text.
 **Why.** The requirement is "unit tests covering key functionality", and the error paths *are* key
 functionality in this assessment — the brief names division by zero, invalid data and graceful
 failure explicitly.
+
+---
+
+## D17 — Mandatory scope first, extras strictly after the deliverables
+
+**Decision.** Stages S1–S5 ship only what the brief requires: the four mandatory operations, in
+both layers, with tests, Docker, coverage and documentation. The optional operations (`power`,
+`sqrt`, `percent`), a CI workflow and the expression parser all live in S6 and are started only
+once S5 is complete.
+
+**Why.** The brief asks for 2–4 hours and says, in so many words, to prioritise correctness,
+clarity and maintainability over extra features. A repository where the four required operations
+are impeccably built, tested and documented reads better than one with seven operations and a thin
+README. Extras are also the first thing to be cut when time runs out, so they must not be entangled
+with anything required.
+
+**Design consequence.** Even though the optional operations are not implemented yet, the contract
+and the domain are shaped so that adding one is a registry entry plus a pure function — the
+extension point exists, it is simply not exercised. The API contract already documents them as
+backlog so the shape stays honest.
