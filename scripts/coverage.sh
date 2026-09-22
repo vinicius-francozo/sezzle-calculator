@@ -31,16 +31,38 @@ docker_run() {
         "$@"
 }
 
+# Runs a report command with its output going to the terminal and to a file at
+# once. Both halves matter: a failing suite must not be silent, and it must not
+# replace a committed report with its own FAIL output, so the file is written
+# aside and only promoted after the command has succeeded. POSIX sh has no
+# PIPESTATUS, hence the marker file to carry the status out of the pipeline.
+report_to() {
+    report=$1
+    shift
+    partial="$report.partial"
+    failed="$report.failed"
+
+    rm -f "$partial" "$failed"
+    { "$@" || : >"$failed"; } | tee "$partial"
+
+    if [ -f "$failed" ]; then
+        rm -f "$partial" "$failed"
+        echo "the suite failed; $report was left unchanged" >&2
+        return 1
+    fi
+
+    mv "$partial" "$report"
+}
+
 echo "==> Backend tests and coverage ($GO_IMAGE)"
-docker_run \
-    --volume "$repo_root/backend:/work" \
-    --env GOCACHE=/tmp/go-build \
-    --env GOMODCACHE=/tmp/go-mod \
-    --env GOFLAGS=-buildvcs=false \
-    "$GO_IMAGE" \
-    sh -c 'go test ./... -coverprofile=/tmp/coverage.out && go tool cover -func=/tmp/coverage.out' \
-    >"$out_dir/backend.txt"
-cat "$out_dir/backend.txt"
+report_to "$out_dir/backend.txt" \
+    docker_run \
+        --volume "$repo_root/backend:/work" \
+        --env GOCACHE=/tmp/go-build \
+        --env GOMODCACHE=/tmp/go-mod \
+        --env GOFLAGS=-buildvcs=false \
+        "$GO_IMAGE" \
+        sh -c 'go test ./... -coverprofile=/tmp/coverage.out && go tool cover -func=/tmp/coverage.out'
 
 echo "==> Frontend dependencies ($NODE_IMAGE)"
 docker_run \
@@ -50,12 +72,11 @@ docker_run \
     npm ci --no-audit --no-fund
 
 echo "==> Frontend tests and coverage ($NODE_IMAGE)"
-docker_run \
-    --volume "$repo_root/frontend:/work" \
-    --env npm_config_cache=/tmp/npm \
-    "$NODE_IMAGE" \
-    npx vitest run --coverage \
-    >"$out_dir/frontend.txt"
-cat "$out_dir/frontend.txt"
+report_to "$out_dir/frontend.txt" \
+    docker_run \
+        --volume "$repo_root/frontend:/work" \
+        --env npm_config_cache=/tmp/npm \
+        "$NODE_IMAGE" \
+        npx vitest run --coverage
 
 echo "==> Reports written to docs/coverage/"
