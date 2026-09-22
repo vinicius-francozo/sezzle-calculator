@@ -124,4 +124,11 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: '7' })).toBeEnabled();
     expect(screen.getByTestId('expression')).toHaveTextContent('4');
   });
+
+  it('offers no free-text input anywhere, on desktop or mobile', () => {
+    const { container } = render(<App />);
+
+    expect(container.querySelector('input')).toBeNull();
+    expect(container.querySelector('textarea')).toBeNull();
+  });
 });
