@@ -31,7 +31,8 @@ COPY --from=busybox:1.37-uclibc /bin/busybox /usr/bin/busybox
 
 COPY --from=build /server /usr/local/bin/server
 
-# The server reads PORT and defaults to 8080.
+# The server reads PORT and defaults to 8080. This is the one place the port is
+# declared; the Compose healthcheck reads it back out of the environment.
 ENV PORT=8080
 EXPOSE 8080
 
