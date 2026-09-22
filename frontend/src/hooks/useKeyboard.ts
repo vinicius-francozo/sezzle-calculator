@@ -7,6 +7,9 @@ import type { CalculatorAction } from './useCalculator';
  */
 const KEY_ACTIONS: Record<string, CalculatorAction> = {
   '.': { type: 'decimal' },
+  // The numpad separator of the ABNT2, German and French layouts, where `.` is
+  // unreachable without leaving the numpad (see CLAUDE.md 2.2).
+  ',': { type: 'decimal' },
   '+': { type: 'operator', operator: 'add' },
   '-': { type: 'operator', operator: 'subtract' },
   '*': { type: 'operator', operator: 'multiply' },

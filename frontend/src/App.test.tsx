@@ -91,6 +91,19 @@ describe('App', () => {
     expect(await screen.findByTestId('expression')).toHaveTextContent('4');
   });
 
+  it('accepts the comma of a numpad as the decimal separator', async () => {
+    calculateMock.mockResolvedValue({ result: 3 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('1,5+1,5{Enter}');
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'add', operands: [1.5, 1.5] },
+      expect.any(AbortSignal),
+    );
+  });
+
   it('activates the keypad button reached by tabbing when Enter is pressed', async () => {
     const user = userEvent.setup({ delay: null });
     render(<App />);

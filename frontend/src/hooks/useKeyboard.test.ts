@@ -29,6 +29,7 @@ describe('actionForKey', () => {
     ['*', { type: 'operator', operator: 'multiply' }],
     ['/', { type: 'operator', operator: 'divide' }],
     ['.', { type: 'decimal' }],
+    [',', { type: 'decimal' }],
     ['=', { type: 'equals' }],
     ['Enter', { type: 'equals' }],
     ['Escape', { type: 'clear' }],
