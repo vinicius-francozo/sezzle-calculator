@@ -9,10 +9,15 @@ name: sezzle-calculator
 services:
   backend:
     build: ./backend
-    # The port is declared once, by the image (backend/Dockerfile: ENV PORT).
-    # The probe reads the same variable the server reads, so overriding PORT
-    # cannot leave the healthcheck knocking on the old port; $$ keeps the
-    # expansion in the container instead of spending it on Compose.
+    # The probe reads the very variable the server reads, so the healthcheck
+    # cannot desync from the port in use; $$ keeps the expansion in the
+    # container instead of spending it on Compose.
+    #
+    # That is all it buys. 8080 is still written out in backend/Dockerfile
+    # (ENV PORT, EXPOSE) and in frontend/nginx.conf (the $upstream line), and
+    # nginx.conf is baked into the frontend image, so overriding PORT here
+    # still breaks the proxy: changing the port means changing the nginx
+    # upstream too, and rebuilding the frontend.
     #
     # The image has no curl, so the probe runs the static busybox it ships for
     # exactly this purpose.
