@@ -14,6 +14,11 @@ const KEY_ACTIONS: Record<string, CalculatorAction> = {
   '-': { type: 'operator', operator: 'subtract' },
   '*': { type: 'operator', operator: 'multiply' },
   '/': { type: 'operator', operator: 'divide' },
+  '^': { type: 'operator', operator: 'power' },
+  '%': { type: 'operator', operator: 'percent' },
+  // No keyboard has a square root key. `@` is what the Windows calculator uses for
+  // it, which is the closest thing to a convention there is.
+  '@': { type: 'unary', operation: 'sqrt' },
   '=': { type: 'equals' },
   Enter: { type: 'equals' },
   Escape: { type: 'clear' },

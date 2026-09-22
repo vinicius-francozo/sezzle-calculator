@@ -306,6 +306,37 @@ describe('App', () => {
     expect(screen.getByTestId('history')).toHaveTextContent('0 − 9 = -9');
   });
 
+  it('accepts the new operations from the keyboard too', async () => {
+    calculateMock.mockResolvedValueOnce({ result: 3 }).mockResolvedValueOnce({ result: 27 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('9@');
+    expect(await screen.findByTestId('expression')).toHaveTextContent('3');
+
+    await user.keyboard('^3{Enter}');
+
+    expect(calculateMock).toHaveBeenNthCalledWith(
+      2,
+      { operation: 'power', operands: [3, 3] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('27');
+  });
+
+  it('takes a percentage from the keyboard', async () => {
+    calculateMock.mockResolvedValue({ result: 30 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('15%200{Enter}');
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'percent', operands: [15, 200] },
+      expect.any(AbortSignal),
+    );
+  });
+
   it('fills its four-by-six grid exactly, leaving no empty cell', () => {
     render(<App />);
 
