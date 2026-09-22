@@ -2,6 +2,9 @@
 node_modules/
 dist/
 coverage/
+
+# ...but the committed coverage reports are a deliverable
+!docs/coverage/
 *.local
 .vite/
 
