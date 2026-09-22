@@ -7,6 +7,5 @@ const SIGNIFICANT_DIGITS = 12;
  * instead of `0.30000000000000004` (see DESIGN.md D6).
  */
 export function formatNumber(value: number): string {
-  const rounded = Number(value.toPrecision(SIGNIFICANT_DIGITS));
-  return Object.is(rounded, -0) ? '0' : String(rounded);
+  return String(Number(value.toPrecision(SIGNIFICANT_DIGITS)));
 }
