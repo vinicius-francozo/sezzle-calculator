@@ -272,7 +272,7 @@ what makes "testable architecture" true rather than claimed, and it is the bound
 looks for first.
 
 **Errors as values.** The domain exposes sentinel errors (`ErrDivisionByZero`,
-`ErrUnsupportedOperation`, `ErrInvalidOperandCount`, `ErrUndefinedResult`, `ErrOverflow`) compared
+`ErrUnsupportedOperation`, `ErrInvalidOperandCount`, `ErrOverflow`) compared
 with `errors.Is`. Never string matching on error text.
 
 ---
@@ -341,3 +341,58 @@ at once — parallel branches with real, isolated working directories over one r
 **Traceability.** The briefs sent to every agent are committed verbatim in
 `prompts/02-agent-briefs.md`, since the assessment asks for the prompts used. Merges are `--no-ff`,
 so the history shows each track as a unit.
+
+---
+
+## D19 — Detail-bearing domain errors are typed and unwrap to the sentinels
+
+**Decision.** Domain errors that carry data — `UnsupportedOperationError{Operation}` and
+`OperandCountError{Operation, Want, Got}` — are types whose `Unwrap()` returns the matching
+sentinel (`ErrUnsupportedOperation`, `ErrInvalidOperandCount`). The transport layer reads the
+fields with `errors.As` and formats the user-facing message from them.
+
+**Why.** The contract's messages are capitalised, user-facing prose (`Unsupported operation
+"tangent"`), while idiomatic Go error strings are lowercase and uncapitalised. Typed errors let
+both be true at once: the domain keeps Go-style error text, the HTTP layer owns the wording the API
+promises, and no layer has to parse the other's strings. `errors.Is` still works for callers that
+only care about the class of failure. This is the pattern the standard library uses
+(`json.UnmarshalTypeError`, `net.OpError`).
+
+---
+
+## D20 — Strict JSON decoding, and how decoder failures map to the catalogue
+
+**Decision.** The handler uses `DisallowUnknownFields`, a 4 KiB `MaxBytesReader`, and a check that
+the body is exactly one JSON object. The mapping to the error catalogue is:
+
+| Decoder outcome | Code |
+| --- | --- |
+| Syntax error, empty body, trailing content, oversized body, unknown field, non-object top level | `INVALID_JSON` (400) |
+| Operand of the wrong JSON type, missing required field, wrong operand count | `VALIDATION_ERROR` (400) |
+
+**Why unknown fields are `INVALID_JSON` and not `VALIDATION_ERROR`.** `encoding/json` reports an
+unknown field as a bare `fmt.Errorf`, with no error type to match on. Telling it apart from other
+decode failures would require comparing the error's text — precisely what `CLAUDE.md` §3 forbids.
+Given the choice between a banned technique and a code the catalogue already covers for
+"body rejected as a whole", the catalogue wins.
+
+**Why an oversized body is 400 and not 413.** `docs/api.md` pins the size-limit case to
+`INVALID_JSON` 400 in the row text. The contract is frozen and the frontend is built against it in
+parallel, so returning 413 would break a promise for a cosmetic gain.
+
+---
+
+## D21 — `UNDEFINED_RESULT` is reserved in the contract but not implemented
+
+**Decision.** The error code exists in `docs/api.md`, explicitly marked as backlog, and has **no**
+sentinel, no mapping row and no test in the Go code.
+
+**Why.** Its only producer is `sqrt`, which is in the S6 backlog. Implementing it now would add a
+branch no request can reach, which `CLAUDE.md` §3 bans as dead code, and the only way to test it
+would be to hand the mapping function a fabricated error — a test asserting what the code happens
+to do, which is what D16 exists to prevent. Reserving it in the contract instead keeps the shape
+honest (a client may keep the code in its union) without shipping unreachable code.
+
+**Guard rail.** The mapping function's `default:` branch turns an unmapped error into a 500, which
+is the generic-500 behaviour §2.3 bans. It carries a comment stating that any new domain error must
+get a mapping row, so adding `sqrt` cannot silently regress into it.

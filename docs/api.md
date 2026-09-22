@@ -70,13 +70,17 @@ Every error, without exception, uses the same envelope:
 `code` is a stable machine-readable identifier the frontend can branch on; `message` is
 human-readable text safe to display to the user as-is.
 
+Rows marked **backlog** are reserved: the shape of the contract accounts for them so adding the
+operation later changes no existing behaviour, but the running service never emits them today. A
+client may keep them in its union of known codes.
+
 | `code` | Status | When |
 | --- | --- | --- |
 | `INVALID_JSON` | 400 | Body is not valid JSON, or is empty, or exceeds the size limit |
 | `VALIDATION_ERROR` | 400 | Missing field, non-numeric operand, non-finite operand, wrong number of operands |
 | `UNSUPPORTED_OPERATION` | 400 | `operation` is not in the table above |
 | `DIVISION_BY_ZERO` | 400 | `divide` with `b == 0` |
-| `UNDEFINED_RESULT` | 400 | Operation is undefined for these operands (e.g. `sqrt` of a negative number) |
+| `UNDEFINED_RESULT` | 400 | **Backlog — ships with `sqrt`.** Operation is undefined for these operands (e.g. `sqrt` of a negative number). Not implemented today: its only producer is a backlog operation, so the code is reserved in the contract but never emitted. |
 | `OVERFLOW` | 400 | Result is not a finite number (`±Inf` or `NaN`) |
 | `NOT_FOUND` | 404 | Unknown route |
 | `METHOD_NOT_ALLOWED` | 405 | Known route, wrong HTTP method |
