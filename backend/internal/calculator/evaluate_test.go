@@ -77,6 +77,9 @@ func TestEvaluateErrorDetails(t *testing.T) {
 		if unsupported.Operation != "tangent" {
 			t.Errorf("Operation = %q, want %q", unsupported.Operation, "tangent")
 		}
+		if want := `unsupported operation "tangent"`; unsupported.Error() != want {
+			t.Errorf("Error() = %q, want %q", unsupported.Error(), want)
+		}
 	})
 
 	t.Run("operand count", func(t *testing.T) {
@@ -88,6 +91,9 @@ func TestEvaluateErrorDetails(t *testing.T) {
 		}
 		if count.Operation != calculator.OpAdd || count.Want != 2 || count.Got != 1 {
 			t.Errorf("got %+v, want {Operation:add Want:2 Got:1}", *count)
+		}
+		if want := `operation "add" requires 2 operands, got 1`; count.Error() != want {
+			t.Errorf("Error() = %q, want %q", count.Error(), want)
 		}
 	})
 }
