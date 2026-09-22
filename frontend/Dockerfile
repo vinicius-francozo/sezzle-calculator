@@ -18,4 +18,13 @@ FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# COPY merges into the document root instead of replacing it, so the base
+# image's stock error page would survive alongside the bundle and be served at
+# /50x.html. Nothing references it -- an upstream failure is the backend's JSON
+# error, not this page -- so it goes. The delete needs root because the
+# directory belongs to root; the image's unprivileged user is restored at once.
+USER root
+RUN rm -f /usr/share/nginx/html/50x.html
+USER nginx
+
 EXPOSE 8080
