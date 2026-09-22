@@ -71,11 +71,16 @@ docker_run \
     "$NODE_IMAGE" \
     npm ci --no-audit --no-fund
 
+# NO_COLOR is what keeps the report readable: Vitest colours its output even
+# when stdout is a pipe, and the escape sequences survive into the committed
+# file. The whole run is captured, not just the per-file table, because at 100%
+# coverage the interesting numbers are in the summary the table is followed by.
 echo "==> Frontend tests and coverage ($NODE_IMAGE)"
 report_to "$out_dir/frontend.txt" \
     docker_run \
         --volume "$repo_root/frontend:/work" \
         --env npm_config_cache=/tmp/npm \
+        --env NO_COLOR=1 \
         "$NODE_IMAGE" \
         npx vitest run --coverage
 
