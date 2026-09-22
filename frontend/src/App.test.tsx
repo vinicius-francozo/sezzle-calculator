@@ -103,7 +103,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'equals' })).toBeEnabled();
   });
 
-  it('disables equals while a request is in flight', async () => {
+  it('disables every key but clear while a request is in flight', async () => {
     const response = deferred<CalculateResult>();
     calculateMock.mockReturnValue(response.promise);
     const user = userEvent.setup({ delay: null });
@@ -111,6 +111,9 @@ describe('App', () => {
 
     await user.keyboard('2+2{Enter}');
     expect(screen.getByRole('button', { name: 'equals' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '7' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'decimal point' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'add' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'clear' })).toBeEnabled();
 
     await act(async () => {
@@ -118,6 +121,7 @@ describe('App', () => {
     });
 
     expect(screen.getByRole('button', { name: 'equals' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '7' })).toBeEnabled();
     expect(screen.getByTestId('expression')).toHaveTextContent('4');
   });
 });
