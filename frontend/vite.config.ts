@@ -26,11 +26,13 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/test/**'],
+      // The suite covers 100% of `src`; the margin is there for rounding, not for
+      // a regression budget.
       thresholds: {
-        statements: 85,
-        branches: 85,
-        functions: 85,
-        lines: 85,
+        statements: 98,
+        branches: 98,
+        functions: 98,
+        lines: 98,
       },
     },
   },
