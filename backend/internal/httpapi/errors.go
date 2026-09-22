@@ -71,6 +71,10 @@ func describeError(err error) *apiError {
 	case errors.Is(err, calculator.ErrOverflow):
 		return newAPIError(http.StatusBadRequest, codeOverflow, "Overflow: the result could not be calculated")
 	default:
+		// Catch-all for the genuinely unexpected only. Every new domain error
+		// must get a case above: the contract reports domain failures as 400,
+		// and falling through to here would turn one into the generic 500
+		// that CLAUDE.md §2.3 forbids — silently, since it still compiles.
 		return errInternal()
 	}
 }

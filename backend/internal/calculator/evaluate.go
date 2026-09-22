@@ -11,6 +11,10 @@ type operation struct {
 
 // registry is the single point of extension of the domain: an operation exists
 // for the service if, and only if, it has an entry here.
+//
+// An entry whose pure function can fail with a new kind of domain error also
+// needs a case in the transport's describeError; without one the failure is
+// reported as a 500 instead of the 400 the contract defines for it.
 var registry = map[Operation]operation{
 	OpAdd:      {arity: 2, apply: func(o []float64) (float64, error) { return Add(o[0], o[1]), nil }},
 	OpSubtract: {arity: 2, apply: func(o []float64) (float64, error) { return Subtract(o[0], o[1]), nil }},
