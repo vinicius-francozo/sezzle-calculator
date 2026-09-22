@@ -10,10 +10,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Runtime stage: nginx serves the bundle and reverse-proxies /api to the backend.
-FROM nginx:1.29-alpine AS runtime
+# Runtime stage: nginx serves the bundle and reverse-proxies /api to the
+# backend. The unprivileged variant runs the master process as a non-root user,
+# which is why the server listens on 8080 instead of 80.
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 8080

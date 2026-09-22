@@ -36,7 +36,7 @@ services:
     # rather than 8080 so that the composed stack and a natively run Go server
     # (docs/api.md) can be up at the same time without fighting over a port.
     ports:
-      - "3000:80"
+      - "3000:8080"
     depends_on:
       backend:
         condition: service_healthy
