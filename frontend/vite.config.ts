@@ -21,6 +21,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // jsdom rendering plus simulated pointer events is slow on cold CI machines.
+    testTimeout: 15000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

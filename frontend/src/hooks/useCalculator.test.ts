@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, calculate } from '../lib/api';
+import type { CalculateResponse } from '../types/api';
 import {
   calculatorReducer,
   formatExpression,
@@ -27,6 +28,15 @@ function type(text: string): CalculatorAction[] {
   return [...text].map((character) =>
     character === '.' ? { type: 'decimal' } : { type: 'digit', digit: character },
   );
+}
+
+/** A promise the test settles by hand, to observe the in-flight state. */
+function deferred<T>() {
+  let settle: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve;
+  });
+  return { promise, settle };
 }
 
 const add: CalculatorAction = { type: 'operator', operator: 'add' };
@@ -267,6 +277,26 @@ describe('useCalculator', () => {
     await waitFor(() => expect(result.current.state.error).toBe('Division by zero is undefined'));
     expect(result.current.state.pending).toBeNull();
     expect(result.current.expression).toBe('12 ÷ 0');
+  });
+
+  it('discards a response that arrives after the calculator was cleared', async () => {
+    const response = deferred<CalculateResponse>();
+    calculateMock.mockReturnValue(response.promise);
+    const { result } = renderHook(() => useCalculator());
+
+    act(() => {
+      [...type('2'), add, ...type('3'), equals].forEach(result.current.dispatch);
+    });
+    expect(result.current.state.pending).not.toBeNull();
+
+    act(() => {
+      result.current.dispatch(clear);
+    });
+    await act(async () => {
+      response.settle({ operation: 'add', operands: [2, 3], result: 5 });
+    });
+
+    expect(result.current.state).toEqual(initialState);
   });
 
   it('falls back to a readable message when the failure is not an ApiError', async () => {
