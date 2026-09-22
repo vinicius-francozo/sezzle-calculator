@@ -108,6 +108,11 @@ func decodeError(err error) *apiError {
 		return newAPIError(http.StatusBadRequest, codeInvalidJSON,
 			fmt.Sprintf("Request body must not exceed %d bytes", maxRequestBodyBytes))
 	case errors.As(err, &typeError) && typeError.Field != "":
+		// A number outside the range of a float64, such as 1e999, also lands
+		// here. The decoder reports it as a type mismatch on the field, and
+		// the only thing separating it from a genuine one is the prose in
+		// UnmarshalTypeError.Value; matching on that is the kind of string
+		// comparison this codebase avoids, so the message stays generic.
 		return newAPIError(http.StatusBadRequest, codeValidationError,
 			fmt.Sprintf("Field %q has the wrong type", typeError.Field))
 	case errors.As(err, &typeError):

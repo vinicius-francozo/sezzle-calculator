@@ -189,6 +189,19 @@ func TestErrorCatalogue(t *testing.T) {
 			wantMessage: `Field "operands" has the wrong type`,
 		},
 		{
+			// A number outside the range of a float64 is reported as a type
+			// error too: the decoder cannot represent it, and the cause is not
+			// distinguishable from a genuine mismatch without matching on the
+			// decoder's prose. Pinned so the behaviour stays deliberate.
+			name:        "operand outside float64 range",
+			method:      http.MethodPost,
+			path:        pathCalculate,
+			body:        `{"operation":"add","operands":[1e999,1]}`,
+			wantStatus:  http.StatusBadRequest,
+			wantCode:    codeValidationError,
+			wantMessage: `Field "operands" has the wrong type`,
+		},
+		{
 			name:        "wrong arity",
 			method:      http.MethodPost,
 			path:        pathCalculate,
