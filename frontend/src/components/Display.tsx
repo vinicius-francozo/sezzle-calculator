@@ -20,7 +20,7 @@ export function Display({ history, expression, error }: DisplayProps): React.JSX
           </li>
         ))}
       </ol>
-      <output className="display__expression" data-testid="expression" aria-live="polite">
+      <output className="display__expression" data-testid="expression">
         {expression}
       </output>
       {error !== null && (
