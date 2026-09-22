@@ -1,0 +1,138 @@
+# Makes the claim this repository rests on falsifiable by someone who has not
+# cloned it (DESIGN.md D25): both suites and the composed stack run on a machine
+# that is not the author's, with the toolchain versions the images pin.
+name: CI
+
+on:
+  # push covers branch work before a pull request exists; pull_request covers
+  # contributions from forks, whose pushes never reach this repository.
+  push:
+  pull_request:
+
+# Nothing here writes to the repository, publishes anything or comments on a
+# pull request, so the default read access to the code is all it gets.
+permissions:
+  contents: read
+
+# A newer push makes the run it interrupted irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The three jobs are independent and run in parallel: the stack builds its own
+# images and does not wait on the unit suites.
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # The version comes out of go.mod, which is the same 1.26 that
+          # backend/Dockerfile pins as golang:1.26-alpine, so CI and the image
+          # cannot drift apart.
+          go-version-file: backend/go.mod
+          # The module depends on the standard library alone, so there is no
+          # go.sum to key the cache on. go.mod is the stable stand-in, and the
+          # cache still earns its place: setup-go stores the build cache under
+          # the same key.
+          cache-dependency-path: backend/go.mod
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would rewrite these files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with coverage
+        run: go test ./... -coverprofile=coverage.out
+
+      # The number is the point of the run, so it goes where a reviewer sees it
+      # without unfolding a log: the job summary, and the log as well.
+      - name: Report coverage
+        run: |
+          report=$(go tool cover -func=coverage.out)
+          echo "$report"
+          {
+            echo '### Backend coverage'
+            echo
+            echo '```'
+            echo "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  frontend:
+    name: Frontend (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # The major frontend/Dockerfile pins as node:22-alpine.
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      # The thresholds live in vite.config.ts, so a coverage regression fails
+      # this step on its own and CI never has to restate the numbers.
+      - name: Test with coverage
+        run: npm run coverage
+
+      - name: Report coverage
+        run: |
+          summary=$(jq -r '.total | "- statements: \(.statements.pct)%",
+                                    "- branches: \(.branches.pct)%",
+                                    "- functions: \(.functions.pct)%",
+                                    "- lines: \(.lines.pct)%"' coverage/coverage-summary.json)
+          echo "$summary"
+          {
+            echo '### Frontend coverage'
+            echo
+            echo "$summary"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  stack:
+    name: Stack (Docker Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This is the job that tests D13's promise that one command is enough:
+      # --wait returns only once the backend healthcheck passes and the
+      # frontend that depends on it is up.
+      - name: Build the images and start the stack
+        run: docker compose up --build --detach --wait --wait-timeout 120
+
+      - name: Exercise the API through the proxy
+        run: ./.github/scripts/smoke-test.sh
+
+      - name: Dump container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear the stack down
+        if: always()
+        run: docker compose down --volumes
