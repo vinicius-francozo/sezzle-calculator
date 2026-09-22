@@ -400,3 +400,64 @@ honest (a client may keep the code in its union) without shipping unreachable co
 **Guard rail.** The mapping function's `default:` branch turns an unmapped error into a 500, which
 is the generic-500 behaviour §2.3 bans. It carries a comment stating that any new domain error must
 get a mapping row, so adding `sqrt` cannot silently regress into it.
+
+---
+
+## D22 — Frontend state invariants and the client-only error codes
+
+Decisions taken while building and reviewing the UI, recorded here because they constrain anyone
+who touches the reducer next.
+
+**An entry carries its text and its value together.** `Entry { text, value }` holds what the
+display shows alongside the exact number it denotes. Two constructors keep the pair honest:
+`typedEntry(text)` for what the user types and `resultEntry(value)` for a settled result, which
+keeps full precision behind the rounded text. Formatting is *presentational only* — no code path
+parses a formatted string back into a number.
+
+*Why it matters.* The first version stored the formatted result and re-parsed it for the next
+operation, so `1 ÷ 3 =` followed by `× 3 =` produced `0.999999999999` instead of `1`: rounding had
+quietly become part of the arithmetic, in direct conflict with D7's "the server owns semantics".
+
+**The entry cap equals the display precision.** `MAX_ENTRY_DIGITS` is derived from
+`SIGNIFICANT_DIGITS`, not set independently. A larger cap breaks the invariant from the other side:
+16 typed digits exceed `Number.MAX_SAFE_INTEGER`, so `9999999999999999` would display one number
+and send another, and an operand longer than the display precision would be redrawn rounded the
+moment an operator was pressed. Tying the two constants together makes the disagreement
+unrepresentable. The cap also keeps `Number(entry)` from reaching `Infinity`, which `JSON.stringify`
+would serialise as `null` and break the contract's `number[]`.
+
+**While a request is in flight, every key except `C` is inert.** One rule, stated once in the
+reducer and mirrored declaratively in the keypad, so the keyboard inherits it with no second
+implementation. It guarantees at most one request at a time, makes a stale response a single case,
+and keeps §4.1's "never stuck in a loading state" literally true because `C` always escapes.
+
+**Three error codes are client-only.** `NETWORK_ERROR`, `TIMEOUT` and `UNEXPECTED_ERROR` never come
+from the API; they are minted by the client so that transport failures, a 10-second request
+deadline (`AbortController`) and an unrecognisable response body all reach the UI through the same
+single error channel as a server rejection. The display code does not care where a failure came
+from.
+
+**History entries carry an identity.** `HistoryEntry.id` is minted in the reducer and is what React
+keys on. Index keys break once `HISTORY_LIMIT` starts evicting from the front, which is exactly
+when the list is most active.
+
+---
+
+## D23 — What the reviews changed, and why the loop was worth it
+
+Every track was reviewed by an agent that did not write it, and every review ran the suite and
+mutated the code rather than reading it. That combination, not coverage, is what found the real
+defects:
+
+| Found by | Defect | Why coverage missed it |
+| --- | --- | --- |
+| Mutation | Deleting the `Recover` middleware from the assembled chain left the suite green | The middleware was tested in isolation, never in the chain |
+| Mutation | Dropping the server's `Shutdown` call left the suite green | The test asserted the return value, not that the listener closed |
+| Mutation | Reverting half of the precision fix left all 89 tests green | Both regression tests covered the same one of two code paths |
+| Running it | Chaining from a rounded display string gave `0.999999999999` for `1 ÷ 3 × 3` | Every unit test used values that survive rounding |
+| Running it | `docs/coverage/frontend.txt` was written full of ANSI escapes, and empty at 100% coverage | Nobody had read the generated artifact |
+| Running it | nginx cached the backend's IP for the worker's lifetime | Only reproducible by moving the container |
+
+The lesson worth keeping: a test suite at 100% coverage proves the lines ran, not that anything is
+asserted about them. Mutation is the cheap way to tell the difference, and reading the artifact a
+script produces is the cheap way to tell whether a deliverable is actually deliverable.
