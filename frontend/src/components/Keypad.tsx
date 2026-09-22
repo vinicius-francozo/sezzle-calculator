@@ -1,4 +1,4 @@
-import type { Dispatch } from 'react';
+import { useEffect, useRef, type Dispatch } from 'react';
 import type { CalculatorAction } from '../hooks/useCalculator';
 import { OPERATOR_SYMBOLS } from '../lib/operations';
 import { CalcButton, type ButtonVariant } from './CalcButton';
@@ -63,8 +63,29 @@ export interface KeypadProps {
 }
 
 export function Keypad({ dispatch, busy }: KeypadProps): React.JSX.Element {
+  const keypadRef = useRef<HTMLDivElement>(null);
+
+  // A request disables the button that was just pressed, and a disabled element cannot
+  // keep focus: the browser drops it to <body>, stranding a keyboard user at the top of
+  // the document. The keypad takes that focus instead, so Tab resumes here and the
+  // `aria-busy` state is the one a screen reader announces. It is not a button, so Enter
+  // still means equals while the request is in flight.
+  useEffect(() => {
+    const keypad = keypadRef.current;
+    if (busy && keypad !== null && holdsStrandedFocus(keypad)) {
+      keypad.focus();
+    }
+  }, [busy]);
+
   return (
-    <div className="keypad">
+    <div
+      className="keypad"
+      role="group"
+      aria-label="Keypad"
+      aria-busy={busy}
+      tabIndex={-1}
+      ref={keypadRef}
+    >
       {KEYS.map((key) => (
         <CalcButton
           key={key.name ?? key.label}
@@ -78,4 +99,10 @@ export function Keypad({ dispatch, busy }: KeypadProps): React.JSX.Element {
       ))}
     </div>
   );
+}
+
+/** Whether focus sits on a button the keypad just disabled, or was already dropped by one. */
+function holdsStrandedFocus(keypad: HTMLDivElement): boolean {
+  const active = document.activeElement;
+  return active === document.body || keypad.contains(active);
 }

@@ -91,6 +91,12 @@ body {
   gap: 8px;
 }
 
+/* The keypad catches the focus a disabled button would otherwise drop. That move is
+   programmatic, so the ring belongs only to a user who is navigating by keyboard. */
+.keypad:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .key {
   min-height: 60px;
   padding: 8px;

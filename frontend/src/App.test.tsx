@@ -104,6 +104,30 @@ describe('App', () => {
     );
   });
 
+  it('marks the keypad busy and keeps focus inside it while a request is in flight', async () => {
+    const response = deferred<CalculateResult>();
+    calculateMock.mockReturnValue(response.promise);
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('2+2');
+    const keypad = screen.getByRole('group', { name: 'Keypad' });
+    expect(keypad).toHaveAttribute('aria-busy', 'false');
+
+    screen.getByRole('button', { name: 'equals' }).focus();
+    await user.keyboard('{Enter}');
+
+    // The button that was pressed is disabled now, so its focus would fall to <body>.
+    expect(keypad).toHaveAttribute('aria-busy', 'true');
+    expect(keypad).toHaveFocus();
+
+    await act(async () => {
+      response.settle({ result: 4 });
+    });
+
+    expect(keypad).toHaveAttribute('aria-busy', 'false');
+  });
+
   it('activates the keypad button reached by tabbing when Enter is pressed', async () => {
     const user = userEvent.setup({ delay: null });
     render(<App />);
