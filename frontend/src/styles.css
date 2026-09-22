@@ -118,13 +118,13 @@ body {
   background: var(--key-action);
 }
 
-.key--span-columns {
+.key--wide {
   grid-column: span 2;
 }
 
-/* `=` fills the rest of the operator column, so the bottom row has no empty cell. */
-.key--span-rows {
-  grid-row: span 3;
+/* `=` fills the bottom row, which is the cell `0` does not take. */
+.key--full {
+  grid-column: 1 / -1;
 }
 
 .key:hover:not(:disabled) {

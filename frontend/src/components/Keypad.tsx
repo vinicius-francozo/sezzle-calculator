@@ -1,13 +1,15 @@
 import { useEffect, useRef, type Dispatch } from 'react';
 import type { CalculatorAction } from '../hooks/useCalculator';
 import { OPERATOR_SYMBOLS } from '../lib/operations';
+import type { BinaryOperation } from '../types/api';
 import { CalcButton, type ButtonVariant } from './CalcButton';
 
 interface KeyDefinition {
   readonly label: string;
   readonly name?: string;
   readonly variant: ButtonVariant;
-  readonly span?: 'columns' | 'rows';
+  /** How much of the grid the key covers: two columns, or the whole bottom row. */
+  readonly span?: 'wide' | 'full';
   readonly action: CalculatorAction;
 }
 
@@ -15,45 +17,44 @@ function digit(value: string): KeyDefinition {
   return { label: value, variant: 'digit', action: { type: 'digit', digit: value } };
 }
 
-/** The keypad, in visual order: four columns, operators on the right. */
+/** An operator key, labelled with its expression symbol unless a legend says more. */
+function operator(name: BinaryOperation, label = OPERATOR_SYMBOLS[name]): KeyDefinition {
+  return { label, name, variant: 'operator', action: { type: 'operator', operator: name } };
+}
+
+/**
+ * The keypad, in visual order: four columns by six rows, digits on the left and
+ * operators down the right. That is 24 cells for 20 keys, and the two spans take
+ * up the difference exactly — `0` covers two columns, `=` the whole bottom row —
+ * so the grid has no hole in it.
+ */
 const KEYS: readonly KeyDefinition[] = [
   { label: 'C', name: 'clear', variant: 'action', action: { type: 'clear' } },
   {
-    label: OPERATOR_SYMBOLS.divide,
-    name: 'divide',
+    label: OPERATOR_SYMBOLS.sqrt,
+    name: 'square root',
     variant: 'operator',
-    action: { type: 'operator', operator: 'divide' },
+    action: { type: 'unary', operation: 'sqrt' },
   },
-  {
-    label: OPERATOR_SYMBOLS.multiply,
-    name: 'multiply',
-    variant: 'operator',
-    action: { type: 'operator', operator: 'multiply' },
-  },
-  {
-    label: OPERATOR_SYMBOLS.subtract,
-    name: 'subtract',
-    variant: 'operator',
-    action: { type: 'operator', operator: 'subtract' },
-  },
+  // `x` to the power of `y`, because `^` on a key says nothing on its own.
+  operator('power', 'xʸ'),
+  operator('percent'),
   digit('7'),
   digit('8'),
   digit('9'),
-  {
-    label: OPERATOR_SYMBOLS.add,
-    name: 'add',
-    variant: 'operator',
-    action: { type: 'operator', operator: 'add' },
-  },
+  operator('divide'),
   digit('4'),
   digit('5'),
   digit('6'),
-  { label: '=', name: 'equals', variant: 'action', span: 'rows', action: { type: 'equals' } },
+  operator('multiply'),
   digit('1'),
   digit('2'),
   digit('3'),
-  { label: '0', variant: 'digit', span: 'columns', action: { type: 'digit', digit: '0' } },
+  operator('subtract'),
+  { label: '0', variant: 'digit', span: 'wide', action: { type: 'digit', digit: '0' } },
   { label: '.', name: 'decimal point', variant: 'digit', action: { type: 'decimal' } },
+  operator('add'),
+  { label: '=', name: 'equals', variant: 'action', span: 'full', action: { type: 'equals' } },
 ];
 
 export interface KeypadProps {
