@@ -412,7 +412,12 @@ parallel, so returning 413 would break a promise for a cosmetic gain.
 
 ---
 
-## D21 — `UNDEFINED_RESULT` is reserved in the contract but not implemented
+## D21 — `UNDEFINED_RESULT` was reserved in the contract before it was implemented
+
+> **Superseded by D24.** `sqrt` shipped in stage S6, so this code is now emitted and tested. The
+> entry is kept because the reasoning is the point: the contract described the shape before the
+> code existed, and the code stayed free of unreachable branches until the operation that needed
+> them arrived. Adding `sqrt` required no contract change.
 
 **Decision.** The error code exists in `docs/api.md`, explicitly marked as backlog, and has **no**
 sentinel, no mapping row and no test in the Go code.
@@ -487,3 +492,51 @@ defects:
 The lesson worth keeping: a test suite at 100% coverage proves the lines ran, not that anything is
 asserted about them. Mutation is the cheap way to tell the difference, and reading the artifact a
 script produces is the cheap way to tell whether a deliverable is actually deliverable.
+
+---
+
+## D24 — The optional operations, and how a unary operation fits a binary UI
+
+**Decision.** `power`, `sqrt` and `percent` ship. The API needed no contract change: they were
+already specified in `api.md` and the domain registry was built as the single extension point, so
+each one is a pure function, a registry row and a test table. `UNDEFINED_RESULT` is now a live code,
+emitted by `sqrt` of a negative number, which is what D21 predicted and deferred.
+
+**Semantics.**
+
+| Operation | Arity | Meaning |
+| --- | --- | --- |
+| `power` | 2 | `a ^ b` |
+| `sqrt` | 1 | `√a`, undefined for `a < 0` |
+| `percent` | 2 | `a% of b` — `a / 100 * b`, so `15 % 200 =` is `30` |
+
+**The interesting part is `sqrt`, because the UI is built around binary operations.** A unary
+operation has no second operand to wait for, so it does not follow the
+`left → operator → right → =` flow. It applies **immediately** to whatever is on the display and
+replaces it, exactly as a physical calculator behaves: `9 √` shows `3` at once, with no `=`.
+
+That makes `√` the only key that can issue a request without `=`, which has three consequences the
+reducer has to honour:
+- the result lands in the entry with `overwriteEntry: true`, so the next digit starts fresh and
+  `√` chains (`81 √ √` gives `3`);
+- a pending binary operation is preserved, not resolved — `2 + 9 √` leaves `2 +` waiting and
+  replaces the right operand with `3`, so `=` then gives `5`;
+- an error from `√` follows D8 like any other: inline, expression preserved, history untouched.
+
+**Why `percent` stayed binary.** Contextual percent (`200 + 10 %` meaning `220`) is what some
+desktop calculators do, and it requires the percent key to inspect the pending operation and change
+meaning accordingly. That is a special case in the reducer for one key, and it makes the API
+ambiguous about what was actually computed. `a% of b` is one rule, reads the same in the UI and in
+the contract, and needed no new state.
+
+---
+
+## D25 — Continuous integration
+
+**Decision.** A GitHub Actions workflow runs both suites on every push and pull request, with the
+same toolchain versions the containers pin, and also builds the compose stack.
+
+**Why.** The claim this repository makes is "it runs from a clean clone with only Docker". CI is the
+cheapest way to make that claim falsifiable by someone who has not cloned it: a reviewer opening the
+repository sees whether the suite passes on a machine that is not the author's. It also guards the
+coverage thresholds, which are only meaningful if something enforces them.

@@ -89,7 +89,7 @@ needed.
 
 ---
 
-## S6 — Backlog (only if the budget allows, in this order)
+## S6 — Backlog (started after S5 closed, in this order)
 
 1. `power`, `sqrt`, `percent` — **both layers**: one registry entry, one pure function and one test
    table each in Go, plus the matching buttons and reducer actions in the UI. Cheap by construction

@@ -38,9 +38,9 @@ operations (`sqrt`) fit the same contract without changing it.
 | `subtract` | 2 | `a - b` | in scope |
 | `multiply` | 2 | `a * b` | in scope |
 | `divide` | 2 | `a / b`, `b != 0` | in scope |
-| `power` | 2 | `a ^ b` | backlog |
-| `sqrt` | 1 | `√a`, `a >= 0` | backlog |
-| `percent` | 2 | `a% of b` | backlog |
+| `power` | 2 | `a ^ b` | in scope |
+| `sqrt` | 1 | `√a`, `a >= 0` | in scope |
+| `percent` | 2 | `a% of b`, i.e. `a / 100 * b` | in scope |
 
 ### Success — `200 OK`
 
@@ -70,17 +70,13 @@ Every error, without exception, uses the same envelope:
 `code` is a stable machine-readable identifier the frontend can branch on; `message` is
 human-readable text safe to display to the user as-is.
 
-Rows marked **backlog** are reserved: the shape of the contract accounts for them so adding the
-operation later changes no existing behaviour, but the running service never emits them today. A
-client may keep them in its union of known codes.
-
 | `code` | Status | When |
 | --- | --- | --- |
 | `INVALID_JSON` | 400 | Body is not valid JSON, is empty, is not a JSON object, has trailing content, carries an unknown field, or exceeds the size limit (4 KiB) |
 | `VALIDATION_ERROR` | 400 | Missing field, non-numeric operand, non-finite operand, wrong number of operands |
 | `UNSUPPORTED_OPERATION` | 400 | `operation` is not in the table above |
 | `DIVISION_BY_ZERO` | 400 | `divide` with `b == 0` |
-| `UNDEFINED_RESULT` | 400 | **Backlog — ships with `sqrt`.** Operation is undefined for these operands (e.g. `sqrt` of a negative number). Not implemented today: its only producer is a backlog operation, so the code is reserved in the contract but never emitted. |
+| `UNDEFINED_RESULT` | 400 | Operation is undefined for these operands — `sqrt` of a negative number |
 | `OVERFLOW` | 400 | Result is not a finite number (`±Inf` or `NaN`) |
 | `NOT_FOUND` | 404 | Unknown route |
 | `METHOD_NOT_ALLOWED` | 405 | Known route, wrong HTTP method. The response carries an `Allow` header naming the methods the route accepts, as RFC 9110 requires. |
@@ -137,4 +133,22 @@ curl -s localhost:8080/api/v1/calculate \
   -H 'Content-Type: application/json' \
   -d '{"operation":"tangent","operands":[1]}'
 # {"error":{"code":"UNSUPPORTED_OPERATION","message":"Unsupported operation \"tangent\""}}
+
+# square root — the one unary operation
+curl -s localhost:8080/api/v1/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"sqrt","operands":[9]}'
+# {"operation":"sqrt","operands":[9],"result":3}
+
+# square root of a negative number
+curl -s localhost:8080/api/v1/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"sqrt","operands":[-9]}'
+# {"error":{"code":"UNDEFINED_RESULT","message":"Square root of a negative number is undefined"}}
+
+# percentage — "15% of 200"
+curl -s localhost:8080/api/v1/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"percent","operands":[15,200]}'
+# {"operation":"percent","operands":[15,200],"result":30}
 ```
