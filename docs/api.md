@@ -76,14 +76,14 @@ client may keep them in its union of known codes.
 
 | `code` | Status | When |
 | --- | --- | --- |
-| `INVALID_JSON` | 400 | Body is not valid JSON, or is empty, or exceeds the size limit |
+| `INVALID_JSON` | 400 | Body is not valid JSON, is empty, is not a JSON object, has trailing content, carries an unknown field, or exceeds the size limit (4 KiB) |
 | `VALIDATION_ERROR` | 400 | Missing field, non-numeric operand, non-finite operand, wrong number of operands |
 | `UNSUPPORTED_OPERATION` | 400 | `operation` is not in the table above |
 | `DIVISION_BY_ZERO` | 400 | `divide` with `b == 0` |
 | `UNDEFINED_RESULT` | 400 | **Backlog — ships with `sqrt`.** Operation is undefined for these operands (e.g. `sqrt` of a negative number). Not implemented today: its only producer is a backlog operation, so the code is reserved in the contract but never emitted. |
 | `OVERFLOW` | 400 | Result is not a finite number (`±Inf` or `NaN`) |
 | `NOT_FOUND` | 404 | Unknown route |
-| `METHOD_NOT_ALLOWED` | 405 | Known route, wrong HTTP method |
+| `METHOD_NOT_ALLOWED` | 405 | Known route, wrong HTTP method. The response carries an `Allow` header naming the methods the route accepts, as RFC 9110 requires. |
 | `INTERNAL_ERROR` | 500 | Unexpected failure recovered by middleware — never a stack trace, never leaked internals |
 
 Domain rejections such as division by zero are **client errors (400)**: the request was understood
