@@ -54,7 +54,7 @@ export async function calculate(
       : new ApiError('NETWORK_ERROR', NETWORK_FAILURE_MESSAGE);
   }
 
-  const body = await readJson(response);
+  const body = await readJson(response, signal);
 
   if (!response.ok) {
     throw toApiError(body);
@@ -65,10 +65,16 @@ export async function calculate(
   return { result: body.result };
 }
 
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(response: Response, signal?: AbortSignal): Promise<unknown> {
   try {
     return (await response.json()) as unknown;
   } catch {
+    // The deadline can fire after `fetch` resolved but while the body is still
+    // streaming. That read failure is the caller giving up, not an unreadable response,
+    // so it gets the timeout message rather than the generic one.
+    if (signal?.aborted === true) {
+      throw new ApiError('TIMEOUT', TIMEOUT_MESSAGE);
+    }
     return null;
   }
 }

@@ -96,6 +96,26 @@ describe('calculate', () => {
     expect(error.message).toBe('The calculator service took too long to respond');
   });
 
+  it('reports a deadline that fires while the body is still streaming as a timeout', async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => {
+          controller.abort();
+          throw new DOMException('The operation was aborted', 'AbortError');
+        },
+      })),
+    );
+
+    const error = await expectApiError(calculate(REQUEST, controller.signal));
+
+    expect(error.code).toBe('TIMEOUT');
+    expect(error.message).toBe('The calculator service took too long to respond');
+  });
+
   it('collapses a network failure into the same error shape', async () => {
     vi.stubGlobal(
       'fetch',
