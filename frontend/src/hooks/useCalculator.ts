@@ -54,6 +54,8 @@ export type CalculatorAction =
 type InputAction = Exclude<CalculatorAction, { type: 'clear' | 'resolved' | 'rejected' }>;
 
 const HISTORY_LIMIT = 10;
+/** Digits accepted in a single operand, as on a desktop calculator. */
+const MAX_ENTRY_DIGITS = 16;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';
 
 export const initialState: CalculatorState = {
@@ -113,8 +115,19 @@ function resultEntry(value: number): Entry {
 }
 
 function appendDigit(state: CalculatorState, digit: string): CalculatorState {
-  const text = state.overwriteEntry || state.entry.text === '0' ? digit : state.entry.text + digit;
+  if (state.overwriteEntry || state.entry.text === '0') {
+    return { ...state, entry: typedEntry(digit), overwriteEntry: false, error: null };
+  }
+  // The entry is capped so it always denotes a finite number the API accepts.
+  if (digitsIn(state.entry.text) >= MAX_ENTRY_DIGITS) {
+    return state;
+  }
+  const text = state.entry.text + digit;
   return { ...state, entry: typedEntry(text), overwriteEntry: false, error: null };
+}
+
+function digitsIn(text: string): number {
+  return [...text].filter((character) => character !== '.').length;
 }
 
 function appendDecimal(state: CalculatorState): CalculatorState {

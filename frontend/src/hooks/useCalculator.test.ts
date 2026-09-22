@@ -172,6 +172,13 @@ describe('calculatorReducer', () => {
     expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
   });
 
+  it('caps the entry so the operand stays a number the API accepts', () => {
+    const state = run(type('1'.repeat(20)));
+
+    expect(state.entry.text).toBe('1'.repeat(16));
+    expect(Number.isFinite(state.entry.value)).toBe(true);
+  });
+
   it('hides floating point noise in the displayed result', () => {
     const state = run([
       { type: 'decimal' },
