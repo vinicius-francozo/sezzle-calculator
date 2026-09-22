@@ -33,10 +33,12 @@ function type(text: string): CalculatorAction[] {
 /** A promise the test settles by hand, to observe the in-flight state. */
 function deferred<T>() {
   let settle: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((resolve) => {
+  let fail: (cause: unknown) => void = () => undefined;
+  const promise = new Promise<T>((resolve, reject) => {
     settle = resolve;
+    fail = reject;
   });
-  return { promise, settle };
+  return { promise, settle, fail };
 }
 
 const add: CalculatorAction = { type: 'operator', operator: 'add' };
@@ -339,6 +341,24 @@ describe('useCalculator', () => {
       operation: 'multiply',
       operands: [1 / 3, 3],
     });
+  });
+
+  it('discards a failure that arrives after the calculator was cleared', async () => {
+    const response = deferred<CalculateResult>();
+    calculateMock.mockReturnValue(response.promise);
+    const { result } = renderHook(() => useCalculator());
+
+    act(() => {
+      [...type('12'), divide, ...type('0'), equals].forEach(result.current.dispatch);
+    });
+    act(() => {
+      result.current.dispatch(clear);
+    });
+    await act(async () => {
+      response.fail(new ApiError('DIVISION_BY_ZERO', 'Division by zero is undefined'));
+    });
+
+    expect(result.current.state).toEqual(initialState);
   });
 
   it('falls back to a readable message when the failure is not an ApiError', async () => {
