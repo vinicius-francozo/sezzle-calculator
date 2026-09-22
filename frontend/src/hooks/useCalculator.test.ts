@@ -304,6 +304,7 @@ describe('useCalculator', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('sends the pending operation to the API and shows the result', async () => {
@@ -315,7 +316,10 @@ describe('useCalculator', () => {
     });
 
     await waitFor(() => expect(result.current.expression).toBe('5'));
-    expect(calculateMock).toHaveBeenCalledWith({ operation: 'add', operands: [2, 3] });
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'add', operands: [2, 3] },
+      expect.any(AbortSignal),
+    );
     expect(result.current.state.pending).toBeNull();
   });
 
@@ -366,10 +370,11 @@ describe('useCalculator', () => {
     });
     await waitFor(() => expect(result.current.expression).toBe('1'));
 
-    expect(calculateMock).toHaveBeenNthCalledWith(2, {
-      operation: 'multiply',
-      operands: [1 / 3, 3],
-    });
+    expect(calculateMock).toHaveBeenNthCalledWith(
+      2,
+      { operation: 'multiply', operands: [1 / 3, 3] },
+      expect.any(AbortSignal),
+    );
   });
 
   it('discards a failure that arrives after the calculator was cleared', async () => {
@@ -388,6 +393,31 @@ describe('useCalculator', () => {
     });
 
     expect(result.current.state).toEqual(initialState);
+  });
+
+  it('gives up on a request that never answers, so the keypad comes back', async () => {
+    vi.useFakeTimers();
+    calculateMock.mockImplementation(
+      async (_request, signal) =>
+        new Promise<CalculateResult>((_resolve, reject) => {
+          signal?.addEventListener('abort', () => {
+            reject(new ApiError('TIMEOUT', 'The calculator service took too long to respond'));
+          });
+        }),
+    );
+    const { result } = renderHook(() => useCalculator());
+
+    act(() => {
+      [...type('2'), add, ...type('3'), equals].forEach(result.current.dispatch);
+    });
+    expect(result.current.state.pending).not.toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(result.current.state.error).toBe('The calculator service took too long to respond');
+    expect(result.current.state.pending).toBeNull();
   });
 
   it('falls back to a readable message when the failure is not an ApiError', async () => {

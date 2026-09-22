@@ -65,6 +65,12 @@ const HISTORY_LIMIT = 10;
  */
 const MAX_ENTRY_DIGITS = SIGNIFICANT_DIGITS;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';
+/**
+ * How long a request may take before the client gives up. A service that accepts the
+ * connection and never answers would otherwise keep the keypad disabled forever
+ * (see CLAUDE.md 4.1: the UI never gets stuck in a loading state).
+ */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export const initialState: CalculatorState = {
   entry: { text: '0', value: 0 },
@@ -261,7 +267,9 @@ export function useCalculator(): Calculator {
       return;
     }
     let current = true;
-    calculate({ operation: pending.operation, operands: pending.operands })
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    calculate({ operation: pending.operation, operands: pending.operands }, controller.signal)
       .then((response) => {
         if (current) {
           dispatch({ type: 'resolved', result: response.result });
@@ -274,6 +282,9 @@ export function useCalculator(): Calculator {
       });
     return () => {
       current = false;
+      clearTimeout(deadline);
+      // The answer is no longer wanted, so the request is dropped rather than left running.
+      controller.abort();
     };
   }, [pending]);
 

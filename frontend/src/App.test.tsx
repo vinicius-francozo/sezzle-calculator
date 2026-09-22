@@ -36,7 +36,10 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: '3' }));
     await user.click(screen.getByRole('button', { name: 'equals' }));
 
-    expect(calculateMock).toHaveBeenCalledWith({ operation: 'add', operands: [12, 3] });
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'add', operands: [12, 3] },
+      expect.any(AbortSignal),
+    );
     expect(await screen.findByTestId('expression')).toHaveTextContent('15');
     expect(screen.getByTestId('history')).toHaveTextContent('12 + 3 = 15');
   });
@@ -48,7 +51,10 @@ describe('App', () => {
 
     await user.keyboard('7*6{Enter}');
 
-    expect(calculateMock).toHaveBeenCalledWith({ operation: 'multiply', operands: [7, 6] });
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'multiply', operands: [7, 6] },
+      expect.any(AbortSignal),
+    );
     expect(await screen.findByTestId('expression')).toHaveTextContent('42');
   });
 

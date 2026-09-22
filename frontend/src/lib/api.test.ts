@@ -74,6 +74,28 @@ describe('calculate', () => {
     expect(error.message).toBe('Division by zero is undefined');
   });
 
+  it('reports a request the caller gave up on as a timeout', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () => {
+              reject(new DOMException('The operation was aborted', 'AbortError'));
+            });
+          }),
+      ),
+    );
+    const controller = new AbortController();
+
+    const promise = calculate(REQUEST, controller.signal);
+    controller.abort();
+    const error = await expectApiError(promise);
+
+    expect(error.code).toBe('TIMEOUT');
+    expect(error.message).toBe('The calculator service took too long to respond');
+  });
+
   it('collapses a network failure into the same error shape', async () => {
     vi.stubGlobal(
       'fetch',

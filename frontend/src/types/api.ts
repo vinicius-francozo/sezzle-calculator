@@ -35,6 +35,6 @@ export const SERVER_ERROR_CODES = [
 export type ServerErrorCode = (typeof SERVER_ERROR_CODES)[number];
 
 /** Failures detected by the client, which never reach the API. */
-export type ClientErrorCode = 'NETWORK_ERROR' | 'UNEXPECTED_ERROR';
+export type ClientErrorCode = 'NETWORK_ERROR' | 'TIMEOUT' | 'UNEXPECTED_ERROR';
 
 export type ApiErrorCode = ServerErrorCode | ClientErrorCode;
