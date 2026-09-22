@@ -251,6 +251,13 @@ examples in `api.md` target. Publishing the composed stack there means a reviewe
 native path and then `docker compose up` gets `Bind for 0.0.0.0:8080 failed: port is already
 allocated`. Keeping them on different ports lets both documented run paths coexist.
 
+**Why the published port binds all interfaces and not `127.0.0.1`.** A review raised that
+`3000:8080` serves the stack to the local network. True, and deliberate: binding to loopback breaks
+the reviewer who runs Docker inside a Linux VM and opens the browser on the host, which fails
+silently and confusingly. D13's headline promise is that one command works for someone who may not
+be an engineer, and that outweighs LAN exposure of a local demo calculator holding no data. Anyone
+who wants it loopback-only changes one line in `compose.yaml`.
+
 **Why.** Frontend and API become same-origin, so **CORS stops existing** in the deployed stack and
 there is no API URL to configure — `VITE_API_BASE_URL` defaults to `/api`. In development, the Vite
 dev server proxies the same path, so both environments behave identically. A permissive CORS
