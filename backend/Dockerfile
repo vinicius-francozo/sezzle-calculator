@@ -11,16 +11,22 @@ RUN go mod download
 
 COPY . .
 
-# CGO off and a trimmed build produce a self-contained binary that runs on an
-# image with no libc and no shell.
+# CGO off and a trimmed build produce a statically linked binary, so the
+# runtime image needs no libc and no dynamic loader.
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /server ./cmd/server
 
-# Runtime stage: distroless, no shell, no package manager, non-root by default.
+# Runtime stage: distroless — no package manager, no OS userland beyond what is
+# copied in below, non-root by default.
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 
-# A distroless image has no HTTP client, so the Compose healthcheck would have
-# nothing to run. A single static busybox binary is the smallest way to give it
-# one without giving up the distroless base for the application itself.
+# Compose needs an HTTP client for the healthcheck and distroless ships none.
+# A single static busybox is the smallest way to supply one, and it is worth
+# being exact about what that costs: busybox is a multi-call binary, so this
+# one file also puts sh, nc and the rest of its applets in the image, all
+# runnable by the app user. The image is therefore not shell-free. The cleaner
+# alternative is a -healthcheck flag on the server binary, which would keep the
+# image down to a single executable at the price of putting probe logic in the
+# application.
 COPY --from=busybox:1.37-uclibc /bin/busybox /usr/bin/busybox
 
 COPY --from=build /server /usr/local/bin/server
