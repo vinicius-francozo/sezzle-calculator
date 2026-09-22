@@ -174,11 +174,21 @@ describe('calculatorReducer', () => {
     expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
   });
 
-  it('caps the entry so the operand stays a number the API accepts', () => {
+  it('caps the entry at a length whose text and value denote the same number', () => {
     const state = run(type('1'.repeat(20)));
 
-    expect(state.entry.text).toBe('1'.repeat(16));
-    expect(Number.isFinite(state.entry.value)).toBe(true);
+    expect(state.entry.text).toBe('1'.repeat(12));
+    // A longer entry parses to a different number than it reads as: seventeen ones
+    // would be typed as 11111111111111111 and stand for 11111111111111112.
+    expect(String(state.entry.value)).toBe(state.entry.text);
+  });
+
+  it('shows a capped operand unchanged once it becomes the accumulator', () => {
+    const state = run([...type('9'.repeat(20)), add, ...type('1'), equals]);
+
+    // The rounding the display applies must not rewrite the operand that was sent.
+    expect(state.pending).toMatchObject({ operands: [999999999999, 1] });
+    expect(formatExpression(state)).toBe('999999999999 + 1');
   });
 
   it('hides floating point noise in the displayed result', () => {

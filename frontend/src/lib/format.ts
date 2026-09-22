@@ -1,5 +1,9 @@
-/** Significant digits kept on screen; enough for a calculator, short enough to hide float noise. */
-const SIGNIFICANT_DIGITS = 12;
+/**
+ * Significant digits kept on screen; enough for a calculator, short enough to hide
+ * float noise. It is also the cap on a typed operand (see `MAX_ENTRY_DIGITS`), so a
+ * number can never be shown with more precision than it was entered with.
+ */
+export const SIGNIFICANT_DIGITS = 12;
 
 /**
  * formatNumber renders a number the way a desktop calculator does: rounded to

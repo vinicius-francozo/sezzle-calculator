@@ -1,6 +1,6 @@
 import { useEffect, useReducer, type Dispatch } from 'react';
 import { ApiError, calculate } from '../lib/api';
-import { formatNumber } from '../lib/format';
+import { SIGNIFICANT_DIGITS, formatNumber } from '../lib/format';
 import { OPERATOR_SYMBOLS } from '../lib/operations';
 import type { Operation } from '../types/api';
 
@@ -54,8 +54,14 @@ export type CalculatorAction =
 type InputAction = Exclude<CalculatorAction, { type: 'clear' | 'resolved' | 'rejected' }>;
 
 const HISTORY_LIMIT = 10;
-/** Digits accepted in a single operand, as on a desktop calculator. */
-const MAX_ENTRY_DIGITS = 16;
+/**
+ * Digits accepted in a single operand. It is the display precision itself: a longer
+ * entry would be shown rounded by {@link formatNumber} while the arithmetic used the
+ * unrounded value, so `Entry.text` and `Entry.value` would stand for different
+ * numbers. At twelve digits every typed operand is an exact double that survives the
+ * round trip through the display (see DESIGN.md D6 and D7).
+ */
+const MAX_ENTRY_DIGITS = SIGNIFICANT_DIGITS;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';
 
 export const initialState: CalculatorState = {
@@ -118,7 +124,7 @@ function appendDigit(state: CalculatorState, digit: string): CalculatorState {
   if (state.overwriteEntry || state.entry.text === '0') {
     return { ...state, entry: typedEntry(digit), overwriteEntry: false, error: null };
   }
-  // The entry is capped so it always denotes a finite number the API accepts.
+  // The entry is capped so the text on screen and the value behind it always agree.
   if (digitsIn(state.entry.text) >= MAX_ENTRY_DIGITS) {
     return state;
   }
