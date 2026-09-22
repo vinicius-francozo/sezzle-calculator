@@ -40,6 +40,10 @@ func Evaluate(op Operation, operands []float64) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// The NaN half of this guard cannot fire today: with finite operands none
+	// of the four operations produces NaN, because the only input that would,
+	// 0/0, is already rejected as ErrDivisionByZero. It is kept for the
+	// operations a future registry entry may add, such as Sqrt.
 	if math.IsInf(result, 0) || math.IsNaN(result) {
 		return 0, ErrOverflow
 	}
