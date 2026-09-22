@@ -7,6 +7,14 @@ here, prefer the option that a reviewer would call **simpler, more readable and 
 **Time budget: 2–4 hours.** Correctness, clarity and maintainability come before extra features.
 Anything that does not fit goes to the backlog instead of being half-built.
 
+### Companion documents — read them before touching code
+
+| Document | Role |
+| --- | --- |
+| [`docs/api.md`](docs/api.md) | **Frozen** API contract. Both layers are built against it; changing it means changing both layers and their tests. |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Living log of every engineering decision and its rationale. **Every new decision taken during development must be appended here**, as it is taken — it is a deliverable, and it feeds the README. |
+| [`docs/PLAN.md`](docs/PLAN.md) | The task breakdown, dependencies and what "done" means for each task. |
+
 ---
 
 ## 1. Stack
@@ -17,17 +25,27 @@ Anything that does not fit goes to the backlog instead of being half-built.
 | Frontend | React + Vite + TypeScript (strict) |
 | Backend tests | `go test` + `go tool cover` |
 | Frontend tests | Vitest + React Testing Library, `--coverage` (v8) |
-| Optional | Dockerfile / docker-compose running frontend + backend together |
+| Containers | Docker + Docker Compose — **first-class deliverable, not an afterthought** |
 
-**Go toolchain runs through Docker.** There is no Go installed on the development machine, so every
-`go` command is executed inside the official image (`golang:1.26-alpine`) with the repository
-mounted. This is a development convenience only — the code itself must stay a plain, standard Go
-module that a reviewer can `go build`/`go test` natively without Docker.
+### 1.1 Docker is the primary way to run this project
+
+Assume the person running this repository is **not** an engineer with Go, Node and the right
+versions already installed — it may well be a recruiter. Therefore:
+
+- `docker compose up` must bring up frontend + backend, working, from a clean clone, with **no**
+  local Go or Node installed and no version or dependency juggling. This is the documented happy
+  path in the README; running each layer natively is the secondary path, for reviewers who prefer it.
+- Every toolchain version is pinned in the images (Go and Node), so the build is reproducible.
+- Tests and coverage must also be runnable through Docker, for the same reason.
+- There is no Go toolchain on the development machine, so every `go` command during development
+  runs inside the official image with the repository mounted:
 
 ```bash
-# run any go command from the repository root
 docker run --rm -v "$PWD/backend":/app -w /app golang:1.26-alpine go test ./...
 ```
+
+Despite that, the code stays a plain, standard Go module and a standard Vite app: a reviewer with
+native toolchains can `go test ./...` and `npm run dev` without Docker being involved.
 
 ---
 
@@ -37,9 +55,13 @@ docker run --rm -v "$PWD/backend":/app -w /app golang:1.26-alpine go test ./...
 
 **Mandatory (in scope):** addition, subtraction, multiplication, division.
 
-**Optional (backlog — only if the time budget allows):** exponentiation, square root, percentage.
-Backlog items are implemented in that order and only after everything mandatory is done, tested
-and documented.
+**Optional (backlog — only if the time budget allows):** exponentiation, square root, percentage,
+then a server-side expression parser. Backlog items are implemented in that order and only after
+everything mandatory is done, tested and documented.
+
+**Interaction model (decision D1):** step-by-step binary operations, like a desktop calculator in
+basic mode — the frontend sends one operation per request. No expression parser, no operator
+precedence, no parentheses. Chained input resolves left to right.
 
 ### 2.2 Frontend (React)
 
@@ -49,6 +71,11 @@ and documented.
   (`0-9 . + - * / ( ) Enter Backspace Escape`) instead of clicking.
 - **Mobile**: same behaviour through buttons only — no free-text typing affordance. Layout is
   responsive; buttons must stay comfortably tappable.
+- **Accumulator**: the previous result feeds the next operation, as on a real calculator
+  (`12 + 3 =` → `15`, then `× 2 =` → `30`). A digit pressed right after `=` starts a fresh entry.
+  Pressing a second operator resolves the pending operation so the running total stays on screen.
+- **History**: successful calculations are listed above the current entry; errors are not recorded
+  there, they appear inline. In-memory and per-session — not persisted, no history endpoint.
 - Input validation and error handling live in the frontend too (see §4).
 - The frontend consumes the backend API to compute results — arithmetic is **not** duplicated in
   the client. The client validates *shape* (is this expression well formed?), the server owns
@@ -71,8 +98,24 @@ and documented.
      knowledge of HTTP; errors returned as values with `errors.Is`/sentinel or typed errors, never
      strings compared by content; exported identifiers documented with a comment starting with the
      identifier's name; `gofmt`/`go vet` clean; no premature abstraction.
-   - TypeScript/React: strict mode, no `any`; small components with one job; state logic extracted
-     into hooks or a reducer instead of a pile of `useState`; no business logic inside JSX;
+     **Domain shape (decision D4)** — one small pure function per operation plus a thin dispatcher,
+     because that granularity is what makes the unit tests good:
+
+     ```go
+     // pure, obvious to test
+     func Add(a, b float64) float64
+     func Divide(a, b float64) (float64, error)
+     func Sqrt(a float64) (float64, error)
+
+     // dispatcher: validates arity, resolves the operation, delegates
+     func Evaluate(op Operation, operands []float64) (float64, error)
+     ```
+
+     Constants are `OpAdd`, `OpSubtract`, `OpMultiply`, `OpDivide` — a constant named `Add` would
+     collide with the function. The non-finite (overflow) check lives once, in `Evaluate`.
+   - TypeScript/React: strict mode, no `any`; small components with one job; **all calculator
+     state in one `useReducer`**, never a pile of `useState`; the keyboard dispatches the *same*
+     actions as the buttons, never a second implementation; no business logic inside JSX;
      meaningful names over comments; no dead code.
 2. **Unit tests covering key functionality on both layers**, including error paths and edge cases,
    not only the happy path.
@@ -109,6 +152,8 @@ code plus a human-readable message:
 ```json
 { "error": { "code": "DIVISION_BY_ZERO", "message": "Division by zero is undefined" } }
 ```
+
+The full error catalogue lives in [`docs/api.md`](docs/api.md) — this table is the summary.
 
 | Situation | Status |
 | --- | --- |
@@ -183,7 +228,7 @@ A coverage summary is committed to the repository and referenced from the README
 - [ ] Unit tests on both layers
 - [ ] Coverage report committed and linked from the README
 - [ ] `prompts/` with every prompt used, in English
-- [ ] Optional: Dockerfile / compose running both layers together
+- [ ] Dockerfile per layer + `compose.yaml` running both together (treated as required here)
 - [ ] Optional backlog: exponentiation, square root, percentage
 
 ---
