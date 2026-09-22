@@ -19,9 +19,19 @@ export interface PendingOperation {
   readonly nextOperator: Operation | null;
 }
 
+/**
+ * Entry is the operand on screen: the text shown to the user and the exact value
+ * it stands for. They are two fields because the text is rounded for display
+ * while the arithmetic must keep full precision (see DESIGN.md D6 and D7).
+ */
+export interface Entry {
+  readonly text: string;
+  readonly value: number;
+}
+
 export interface CalculatorState {
-  /** The operand currently being typed, exactly as typed. */
-  readonly entry: string;
+  /** The operand currently being typed or shown. */
+  readonly entry: Entry;
   /** The left-hand operand: the previous result, or the entry when the operator was pressed. */
   readonly accumulator: number | null;
   readonly operator: Operation | null;
@@ -47,7 +57,7 @@ const HISTORY_LIMIT = 10;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';
 
 export const initialState: CalculatorState = {
-  entry: '0',
+  entry: { text: '0', value: 0 },
   accumulator: null,
   operator: null,
   overwriteEntry: true,
@@ -92,20 +102,30 @@ function applyInput(state: CalculatorState, action: InputAction): CalculatorStat
   }
 }
 
+/** typedEntry builds the entry for typed text, whose value is exactly what it reads. */
+function typedEntry(text: string): Entry {
+  return { text, value: Number(text) };
+}
+
+/** resultEntry keeps the full-precision result behind its rounded display text. */
+function resultEntry(value: number): Entry {
+  return { text: formatNumber(value), value };
+}
+
 function appendDigit(state: CalculatorState, digit: string): CalculatorState {
-  const entry = state.overwriteEntry || state.entry === '0' ? digit : state.entry + digit;
-  return { ...state, entry, overwriteEntry: false, error: null };
+  const text = state.overwriteEntry || state.entry.text === '0' ? digit : state.entry.text + digit;
+  return { ...state, entry: typedEntry(text), overwriteEntry: false, error: null };
 }
 
 function appendDecimal(state: CalculatorState): CalculatorState {
   if (state.overwriteEntry) {
-    return { ...state, entry: '0.', overwriteEntry: false, error: null };
+    return { ...state, entry: typedEntry('0.'), overwriteEntry: false, error: null };
   }
   // A second decimal point in the same operand is ignored.
-  if (state.entry.includes('.')) {
+  if (state.entry.text.includes('.')) {
     return state;
   }
-  return { ...state, entry: `${state.entry}.`, error: null };
+  return { ...state, entry: typedEntry(`${state.entry.text}.`), error: null };
 }
 
 function applyOperator(state: CalculatorState, operator: Operation): CalculatorState {
@@ -119,7 +139,7 @@ function applyOperator(state: CalculatorState, operator: Operation): CalculatorS
   }
   return {
     ...state,
-    accumulator: Number(state.entry),
+    accumulator: state.entry.value,
     operator,
     overwriteEntry: true,
     error: null,
@@ -140,7 +160,7 @@ function request(
   left: number,
   nextOperator: Operation | null,
 ): CalculatorState {
-  const right = Number(state.entry);
+  const right = state.entry.value;
   const expression = `${formatNumber(left)} ${OPERATOR_SYMBOLS[operation]} ${formatNumber(right)}`;
   return {
     ...state,
@@ -154,15 +174,15 @@ function settle(
   pending: PendingOperation,
   result: number,
 ): CalculatorState {
-  const shown = formatNumber(result);
-  const entry: HistoryEntry = { expression: pending.expression, result: shown };
+  const entry = resultEntry(result);
+  const recorded: HistoryEntry = { expression: pending.expression, result: entry.text };
   return {
     ...state,
-    entry: shown,
-    accumulator: pending.nextOperator === null ? null : Number(shown),
+    entry,
+    accumulator: pending.nextOperator === null ? null : result,
     operator: pending.nextOperator,
     overwriteEntry: true,
-    history: [...state.history, entry].slice(-HISTORY_LIMIT),
+    history: [...state.history, recorded].slice(-HISTORY_LIMIT),
     error: null,
     pending: null,
   };
@@ -179,14 +199,14 @@ export function formatExpression(state: CalculatorState): string {
     return state.pending.expression;
   }
   if (state.operator === null || state.accumulator === null) {
-    return state.entry;
+    return state.entry.text;
   }
   const left = formatNumber(state.accumulator);
   const symbol = OPERATOR_SYMBOLS[state.operator];
   // The right-hand operand is shown while it is being typed, and kept on screen
   // when it made the calculation fail.
   const showsEntry = !state.overwriteEntry || state.error !== null;
-  return showsEntry ? `${left} ${symbol} ${state.entry}` : `${left} ${symbol}`;
+  return showsEntry ? `${left} ${symbol} ${state.entry.text}` : `${left} ${symbol}`;
 }
 
 export interface Calculator {

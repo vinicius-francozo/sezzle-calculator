@@ -47,20 +47,20 @@ const clear: CalculatorAction = { type: 'clear' };
 
 describe('calculatorReducer', () => {
   it('starts on zero', () => {
-    expect(initialState.entry).toBe('0');
+    expect(initialState.entry.text).toBe('0');
     expect(formatExpression(initialState)).toBe('0');
   });
 
   it('builds the entry from digits, replacing the leading zero', () => {
-    expect(run(type('120')).entry).toBe('120');
+    expect(run(type('120')).entry.text).toBe('120');
   });
 
   it('starts a decimal entry with a leading zero', () => {
-    expect(run([{ type: 'decimal' }, ...type('5')]).entry).toBe('0.5');
+    expect(run([{ type: 'decimal' }, ...type('5')]).entry.text).toBe('0.5');
   });
 
   it('ignores a second decimal point', () => {
-    expect(run(type('1.2.3')).entry).toBe('1.23');
+    expect(run(type('1.2.3')).entry.text).toBe('1.23');
   });
 
   it('stores the accumulator when an operator is pressed', () => {
@@ -112,7 +112,7 @@ describe('calculatorReducer', () => {
     const state = run([...type('12'), divide, ...type('4'), equals, { type: 'resolved', result: 3 }]);
 
     expect(state).toMatchObject({
-      entry: '3',
+      entry: { text: '3', value: 3 },
       accumulator: null,
       operator: null,
       overwriteEntry: true,
@@ -132,14 +132,14 @@ describe('calculatorReducer', () => {
       ...type('4'),
     ]);
 
-    expect(state).toMatchObject({ accumulator: 5, operator: 'add', entry: '4' });
+    expect(state).toMatchObject({ accumulator: 5, operator: 'add', entry: { text: '4', value: 4 } });
     expect(formatExpression(state)).toBe('5 + 4');
   });
 
   it('starts a fresh entry when a digit follows equals', () => {
     const state = run([...type('2'), add, ...type('3'), equals, { type: 'resolved', result: 5 }, ...type('7')]);
 
-    expect(state).toMatchObject({ entry: '7', accumulator: null, operator: null });
+    expect(state).toMatchObject({ entry: { text: '7', value: 7 }, accumulator: null, operator: null });
   });
 
   it('chains from the result when an operator follows equals', () => {
@@ -157,6 +157,21 @@ describe('calculatorReducer', () => {
     expect(state.pending).toMatchObject({ operation: 'multiply', operands: [15, 2] });
   });
 
+  it('chains from the full-precision result, not from the rounded display text', () => {
+    const state = run([
+      ...type('1'),
+      divide,
+      ...type('3'),
+      equals,
+      { type: 'resolved', result: 1 / 3 },
+      multiply,
+      ...type('3'),
+      equals,
+    ]);
+
+    expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
+  });
+
   it('hides floating point noise in the displayed result', () => {
     const state = run([
       { type: 'decimal' },
@@ -168,7 +183,7 @@ describe('calculatorReducer', () => {
       { type: 'resolved', result: 0.30000000000000004 },
     ]);
 
-    expect(state.entry).toBe('0.3');
+    expect(state.entry.text).toBe('0.3');
     expect(state.history).toEqual([{ expression: '0.1 + 0.2', result: '0.3' }]);
   });
 
@@ -297,6 +312,26 @@ describe('useCalculator', () => {
     });
 
     expect(result.current.state).toEqual(initialState);
+  });
+
+  it('posts the full-precision result as the operand of the chained operation', async () => {
+    calculateMock.mockResolvedValueOnce({ result: 1 / 3 }).mockResolvedValueOnce({ result: 1 });
+    const { result } = renderHook(() => useCalculator());
+
+    act(() => {
+      [...type('1'), divide, ...type('3'), equals].forEach(result.current.dispatch);
+    });
+    await waitFor(() => expect(result.current.expression).toBe('0.333333333333'));
+
+    act(() => {
+      [multiply, ...type('3'), equals].forEach(result.current.dispatch);
+    });
+    await waitFor(() => expect(result.current.expression).toBe('1'));
+
+    expect(calculateMock).toHaveBeenNthCalledWith(2, {
+      operation: 'multiply',
+      operands: [1 / 3, 3],
+    });
   });
 
   it('falls back to a readable message when the failure is not an ApiError', async () => {
