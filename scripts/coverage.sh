@@ -20,6 +20,15 @@ fi
 
 mkdir -p "$out_dir"
 
+# Scratch files go to a private directory, never next to the reports: the
+# committed docs/coverage/ is a deliverable, so a capture left behind by a
+# Ctrl-C would be swept into the next `git add -A`. The trap covers the
+# interrupt cases too, and re-raises so the caller still sees a killed script.
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+trap 'rm -rf "$tmp_dir"; exit 130' INT
+trap 'rm -rf "$tmp_dir"; exit 143' TERM
+
 # Containers run as the invoking user so that generated files are owned by that
 # user rather than by root. That user has no entry in the image's /etc/passwd,
 # so HOME is redirected to a writable path and each toolchain's cache follows.
@@ -33,25 +42,24 @@ docker_run() {
 
 # Runs a report command with its output going to the terminal and to a file at
 # once. Both halves matter: a failing suite must not be silent, and it must not
-# replace a committed report with its own FAIL output, so the file is written
+# replace a committed report with its own FAIL output, so the capture is taken
 # aside and only promoted after the command has succeeded. POSIX sh has no
 # PIPESTATUS, hence the marker file to carry the status out of the pipeline.
 report_to() {
     report=$1
     shift
-    partial="$report.partial"
-    failed="$report.failed"
+    capture="$tmp_dir/capture"
+    failed="$tmp_dir/failed"
 
-    rm -f "$partial" "$failed"
-    { "$@" || : >"$failed"; } | tee "$partial"
+    rm -f "$capture" "$failed"
+    { "$@" || : >"$failed"; } | tee "$capture"
 
     if [ -f "$failed" ]; then
-        rm -f "$partial" "$failed"
         echo "the suite failed; $report was left unchanged" >&2
         return 1
     fi
 
-    mv "$partial" "$report"
+    mv "$capture" "$report"
 }
 
 echo "==> Backend tests and coverage ($GO_IMAGE)"
