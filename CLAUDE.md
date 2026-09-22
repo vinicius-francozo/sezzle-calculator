@@ -107,7 +107,7 @@ precedence, no parentheses. Chained input resolves left to right.
      // pure, obvious to test
      func Add(a, b float64) float64
      func Divide(a, b float64) (float64, error)
-     func Sqrt(a float64) (float64, error)
+     func Sqrt(a float64) (float64, error) // backlog: shown only to illustrate the unary shape
 
      // dispatcher: validates arity, resolves the operation, delegates
      func Evaluate(op Operation, operands []float64) (float64, error)

@@ -242,10 +242,14 @@ the coverage report without a local toolchain.
 **Decision.** In the composed stack, nginx serves the built static frontend and proxies `/api` to
 the backend container. A single port is exposed to the user.
 
-**Concretely.** Host port `8080` maps to the frontend's nginx (`80`); the backend listens on `8080`
-inside the compose network and is never published to the host. So `http://localhost:8080` serves
-the UI and `http://localhost:8080/api/v1/...` reaches the API through the proxy — the `curl`
-examples in `api.md` work unchanged against the composed stack.
+**Concretely.** Host port `3000` maps to the frontend's nginx; the backend listens on `8080`
+inside the compose network and is never published to the host. So the composed stack is
+`http://localhost:3000`, and `http://localhost:3000/api/v1/...` reaches the API through the proxy.
+
+**Why not publish on 8080.** That is the port the Go server uses natively and the port the `curl`
+examples in `api.md` target. Publishing the composed stack there means a reviewer who tries the
+native path and then `docker compose up` gets `Bind for 0.0.0.0:8080 failed: port is already
+allocated`. Keeping them on different ports lets both documented run paths coexist.
 
 **Why.** Frontend and API become same-origin, so **CORS stops existing** in the deployed stack and
 there is no API URL to configure — `VITE_API_BASE_URL` defaults to `/api`. In development, the Vite
