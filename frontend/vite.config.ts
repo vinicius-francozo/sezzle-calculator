@@ -21,6 +21,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // jsdom rendering plus simulated pointer events is slow on cold CI machines, and
+    // `scripts/coverage.sh` captures the run into a committed report: a test that times
+    // out under load would truncate it. The budget is generous on purpose — a request
+    // that really hangs still fails the suite, only later.
+    testTimeout: 15000,
     coverage: {
       provider: 'v8',
       // `text` is the report scripts/coverage.sh captures, and its `skipFull` has to
