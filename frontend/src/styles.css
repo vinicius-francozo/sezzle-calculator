@@ -1,0 +1,150 @@
+:root {
+  --surface: #1b1d23;
+  --surface-raised: #24262e;
+  --key-digit: #31343d;
+  --key-operator: #3d6ef5;
+  --key-action: #4b4f5c;
+  --text: #f4f5f7;
+  --text-muted: #9aa0ae;
+  --danger: #ff8a80;
+  --radius: 12px;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.calculator {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calculator__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  min-height: 140px;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  overflow-wrap: anywhere;
+}
+
+.display__history {
+  list-style: none;
+  margin: 0 0 auto;
+  padding: 0;
+  max-height: 88px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.display__history-entry {
+  padding: 1px 0;
+}
+
+.display__expression {
+  font-size: 2rem;
+  font-weight: 600;
+  text-align: right;
+  line-height: 1.2;
+}
+
+.display__error {
+  margin: 0;
+  text-align: right;
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.key {
+  min-height: 60px;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--key-digit);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.key--operator {
+  background: var(--key-operator);
+}
+
+.key--action {
+  background: var(--key-action);
+}
+
+.key--span-columns {
+  grid-column: span 2;
+}
+
+.key--span-rows {
+  grid-row: span 2;
+}
+
+.key:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.key:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.key:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.key:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 380px) {
+  .key {
+    min-height: 52px;
+    font-size: 1.1rem;
+  }
+
+  .display__expression {
+    font-size: 1.75rem;
+  }
+}

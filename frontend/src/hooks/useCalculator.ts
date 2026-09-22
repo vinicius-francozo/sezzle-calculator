@@ -178,10 +178,10 @@ export function formatExpression(state: CalculatorState): string {
   if (state.pending !== null) {
     return state.pending.expression;
   }
-  if (state.operator === null) {
+  if (state.operator === null || state.accumulator === null) {
     return state.entry;
   }
-  const left = formatNumber(state.accumulator ?? Number(state.entry));
+  const left = formatNumber(state.accumulator);
   const symbol = OPERATOR_SYMBOLS[state.operator];
   // The right-hand operand is shown while it is being typed, and kept on screen
   // when it made the calculation fail.
