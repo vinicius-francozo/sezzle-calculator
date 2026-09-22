@@ -53,6 +53,11 @@ func TestRunServesThenShutsDownOnContextCancellation(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("run() did not return after its context was cancelled")
 	}
+
+	// Returning is not enough: run() must also have closed the listener. If a
+	// refactor ever drops the Shutdown call, run() still returns nil while the
+	// server keeps serving, and in-flight requests die with the process.
+	requireNotServing(t, address)
 }
 
 // A port that cannot be listened on is reported to the caller, which is what
@@ -93,7 +98,7 @@ func waitUntilHealthy(t *testing.T, address string) {
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		response, err := http.Get("http://" + address + "/api/v1/health")
+		response, err := healthRequest(address)
 		if err == nil {
 			defer response.Body.Close()
 			if response.StatusCode != http.StatusOK {
@@ -104,4 +109,29 @@ func waitUntilHealthy(t *testing.T, address string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("the server did not start listening on %s", address)
+}
+
+// requireNotServing fails unless the address refuses connections, which is
+// what a closed listener does once the server has shut down.
+func requireNotServing(t *testing.T, address string) {
+	t.Helper()
+
+	response, err := healthRequest(address)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+	t.Fatalf("health status = %d after the shutdown, want a connection error", response.StatusCode)
+}
+
+// healthRequest asks for the health endpoint over a connection of its own, so
+// that a pooled connection never stands in for a listener that is gone.
+func healthRequest(address string) (*http.Response, error) {
+	client := &http.Client{
+		Timeout:   2 * time.Second,
+		Transport: &http.Transport{DisableKeepAlives: true},
+	}
+	defer client.CloseIdleConnections()
+
+	return client.Get("http://" + address + "/api/v1/health")
 }
