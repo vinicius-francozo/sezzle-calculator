@@ -174,6 +174,23 @@ describe('calculatorReducer', () => {
     expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
   });
 
+  it('chains from the full-precision result when an operator resolved the expression', () => {
+    // The other half of the same bug: here the result is settled by an operator press,
+    // so the accumulator comes from `settle`, not from `applyOperator`.
+    const state = run([
+      ...type('1'),
+      divide,
+      ...type('3'),
+      multiply,
+      { type: 'resolved', result: 1 / 3 },
+      ...type('3'),
+      equals,
+    ]);
+
+    expect(state.pending?.operands[0]).toBe(1 / 3);
+    expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
+  });
+
   it('caps the entry at a length whose text and value denote the same number', () => {
     const state = run(type('1'.repeat(20)));
 
