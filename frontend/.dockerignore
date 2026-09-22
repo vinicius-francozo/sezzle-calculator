@@ -1,0 +1,20 @@
+# Keep the build context small: dependencies and output are rebuilt in the image.
+node_modules
+dist
+coverage
+.vite
+
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+
+# Environment files stay out of the image. Vite inlines VITE_* values into the
+# bundle at build time, so a local .env pointing VITE_API_BASE_URL at an
+# absolute http://localhost:8080/api would ship a cross-origin URL inside the
+# image and undo the same-origin design (DESIGN.md D14). The build uses the
+# defaults compiled into the source instead.
+.env
+.env.*
+*.local
