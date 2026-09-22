@@ -14,8 +14,8 @@ export function Display({ history, expression, error }: DisplayProps): React.JSX
   return (
     <section className="display" aria-label="Calculator display">
       <ol className="display__history" data-testid="history">
-        {history.map((entry, index) => (
-          <li className="display__history-entry" key={`${index}-${entry.expression}`}>
+        {history.map((entry) => (
+          <li className="display__history-entry" key={entry.id}>
             {entry.expression} = {entry.result}
           </li>
         ))}

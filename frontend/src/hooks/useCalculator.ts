@@ -6,6 +6,8 @@ import type { Operation } from '../types/api';
 
 /** A calculation that succeeded, kept for the history list (see DESIGN.md D12). */
 export interface HistoryEntry {
+  /** Identity of the entry, stable while older entries drop off the front of the list. */
+  readonly id: number;
   readonly expression: string;
   readonly result: string;
 }
@@ -194,7 +196,11 @@ function settle(
   result: number,
 ): CalculatorState {
   const entry = resultEntry(result);
-  const recorded: HistoryEntry = { expression: pending.expression, result: entry.text };
+  const recorded: HistoryEntry = {
+    id: nextHistoryId(state.history),
+    expression: pending.expression,
+    result: entry.text,
+  };
   return {
     ...state,
     entry,
@@ -205,6 +211,14 @@ function settle(
     error: null,
     pending: null,
   };
+}
+
+/**
+ * History ids only ever grow, so an entry keeps its identity when {@link HISTORY_LIMIT}
+ * drops older ones and every index shifts. They restart with a fresh calculator.
+ */
+function nextHistoryId(history: readonly HistoryEntry[]): number {
+  return (history.at(-1)?.id ?? 0) + 1;
 }
 
 function fail(state: CalculatorState, message: string): CalculatorState {

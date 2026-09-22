@@ -120,7 +120,7 @@ describe('calculatorReducer', () => {
       overwriteEntry: true,
       pending: null,
     });
-    expect(state.history).toEqual([{ expression: '12 ÷ 4', result: '3' }]);
+    expect(state.history).toEqual([{ id: 1, expression: '12 ÷ 4', result: '3' }]);
     expect(formatExpression(state)).toBe('3');
   });
 
@@ -220,7 +220,7 @@ describe('calculatorReducer', () => {
     ]);
 
     expect(state.entry.text).toBe('0.3');
-    expect(state.history).toEqual([{ expression: '0.1 + 0.2', result: '0.3' }]);
+    expect(state.history).toEqual([{ id: 1, expression: '0.1 + 0.2', result: '0.3' }]);
   });
 
   it('keeps only the last ten calculations', () => {
@@ -232,6 +232,8 @@ describe('calculatorReducer', () => {
     expect(state.history).toHaveLength(10);
     expect(state.history.at(0)?.result).toBe('3');
     expect(state.history.at(-1)?.result).toBe('12');
+    // Ids keep growing, so the entries that survived keep the identity they had.
+    expect(state.history.map((entry) => entry.id)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });
 
   it('shows a failure inline and keeps the offending expression on screen', () => {
