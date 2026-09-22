@@ -2,7 +2,7 @@
 #
 #   docker compose up --build
 #
-# Then open http://localhost:8080. Nothing else needs to be installed: the Go
+# Then open http://localhost:3000. Nothing else needs to be installed: the Go
 # and Node toolchains live inside the build stages (DESIGN.md D13).
 name: sezzle-calculator
 
@@ -32,9 +32,11 @@ services:
   frontend:
     build: ./frontend
     # The only published port: nginx serves the UI and proxies /api to the
-    # backend, which therefore stays unreachable from outside the stack.
+    # backend, which therefore stays unreachable from outside the stack. 3000
+    # rather than 8080 so that the composed stack and a natively run Go server
+    # (docs/api.md) can be up at the same time without fighting over a port.
     ports:
-      - "8080:80"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
