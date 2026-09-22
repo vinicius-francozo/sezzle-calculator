@@ -1,0 +1,33 @@
+# One command brings up the whole application:
+#
+#   docker compose up --build
+#
+# Then open http://localhost:8080. Nothing else needs to be installed: the Go
+# and Node toolchains live inside the build stages (DESIGN.md D13).
+name: sezzle-calculator
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      PORT: "8080"
+    # The runtime image is distroless and has no shell or curl, so the probe
+    # runs the static busybox the image ships for exactly this purpose.
+    healthcheck:
+      test: ["CMD", "/usr/bin/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    # The only published port: nginx serves the UI and proxies /api to the
+    # backend, which therefore stays unreachable from outside the stack.
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
