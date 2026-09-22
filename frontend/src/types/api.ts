@@ -16,6 +16,9 @@ export interface CalculateResponse extends CalculateRequest {
   readonly result: number;
 }
 
+/** The part of a response the client verifies; the echoed request is not re-checked. */
+export type CalculateResult = Pick<CalculateResponse, 'result'>;
+
 /** Error codes the API can return, per the catalogue in `docs/api.md`. */
 export const SERVER_ERROR_CODES = [
   'INVALID_JSON',

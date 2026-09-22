@@ -2,7 +2,7 @@ import {
   SERVER_ERROR_CODES,
   type ApiErrorCode,
   type CalculateRequest,
-  type CalculateResponse,
+  type CalculateResult,
   type ServerErrorCode,
 } from '../types/api';
 
@@ -28,9 +28,10 @@ export class ApiError extends Error {
 
 /**
  * calculate performs one arithmetic operation through `POST /api/v1/calculate`.
- * It resolves with the response body or rejects with an {@link ApiError}.
+ * It resolves with the result it verified in the response — the echoed request
+ * is not checked, so it is not handed back — or rejects with an {@link ApiError}.
  */
-export async function calculate(request: CalculateRequest): Promise<CalculateResponse> {
+export async function calculate(request: CalculateRequest): Promise<CalculateResult> {
   let response: Response;
   try {
     response = await fetch(`${BASE_URL}/v1/calculate`, {
@@ -50,7 +51,7 @@ export async function calculate(request: CalculateRequest): Promise<CalculateRes
   if (!isRecord(body) || typeof body.result !== 'number' || !Number.isFinite(body.result)) {
     throw new ApiError('UNEXPECTED_ERROR', UNEXPECTED_RESPONSE_MESSAGE);
   }
-  return { operation: request.operation, operands: request.operands, result: body.result };
+  return { result: body.result };
 }
 
 async function readJson(response: Response): Promise<unknown> {

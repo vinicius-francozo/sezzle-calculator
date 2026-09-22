@@ -36,11 +36,7 @@ describe('calculate', () => {
   it('posts the operation to the API and returns the result', async () => {
     respondWith(200, { operation: 'divide', operands: [12, 4], result: 3 });
 
-    await expect(calculate(REQUEST)).resolves.toEqual({
-      operation: 'divide',
-      operands: [12, 4],
-      result: 3,
-    });
+    await expect(calculate(REQUEST)).resolves.toEqual({ result: 3 });
     expect(fetch).toHaveBeenCalledWith('/api/v1/calculate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

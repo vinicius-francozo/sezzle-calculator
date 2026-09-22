@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, calculate } from '../lib/api';
-import type { CalculateResponse } from '../types/api';
+import type { CalculateResult } from '../types/api';
 import {
   calculatorReducer,
   formatExpression,
@@ -254,7 +254,7 @@ describe('useCalculator', () => {
   });
 
   it('sends the pending operation to the API and shows the result', async () => {
-    calculateMock.mockResolvedValue({ operation: 'add', operands: [2, 3], result: 5 });
+    calculateMock.mockResolvedValue({ result: 5 });
     const { result } = renderHook(() => useCalculator());
 
     act(() => {
@@ -280,7 +280,7 @@ describe('useCalculator', () => {
   });
 
   it('discards a response that arrives after the calculator was cleared', async () => {
-    const response = deferred<CalculateResponse>();
+    const response = deferred<CalculateResult>();
     calculateMock.mockReturnValue(response.promise);
     const { result } = renderHook(() => useCalculator());
 
@@ -293,7 +293,7 @@ describe('useCalculator', () => {
       result.current.dispatch(clear);
     });
     await act(async () => {
-      response.settle({ operation: 'add', operands: [2, 3], result: 5 });
+      response.settle({ result: 5 });
     });
 
     expect(result.current.state).toEqual(initialState);

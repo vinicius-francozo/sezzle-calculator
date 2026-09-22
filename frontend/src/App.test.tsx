@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { ApiError, calculate } from './lib/api';
-import type { CalculateResponse } from './types/api';
+import type { CalculateResult } from './types/api';
 
 vi.mock('./lib/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./lib/api')>()),
@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe('App', () => {
   it('computes an expression typed on the keypad and records it in the history', async () => {
-    calculateMock.mockResolvedValue({ operation: 'add', operands: [12, 3], result: 15 });
+    calculateMock.mockResolvedValue({ result: 15 });
     const user = userEvent.setup({ delay: null });
     render(<App />);
 
@@ -42,7 +42,7 @@ describe('App', () => {
   });
 
   it('accepts the same expression from the keyboard', async () => {
-    calculateMock.mockResolvedValue({ operation: 'multiply', operands: [7, 6], result: 42 });
+    calculateMock.mockResolvedValue({ result: 42 });
     const user = userEvent.setup({ delay: null });
     render(<App />);
 
@@ -104,7 +104,7 @@ describe('App', () => {
   });
 
   it('disables equals while a request is in flight', async () => {
-    const response = deferred<CalculateResponse>();
+    const response = deferred<CalculateResult>();
     calculateMock.mockReturnValue(response.promise);
     const user = userEvent.setup({ delay: null });
     render(<App />);
@@ -114,7 +114,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'clear' })).toBeEnabled();
 
     await act(async () => {
-      response.settle({ operation: 'add', operands: [2, 2], result: 4 });
+      response.settle({ result: 4 });
     });
 
     expect(screen.getByRole('button', { name: 'equals' })).toBeEnabled();
