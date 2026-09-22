@@ -10,6 +10,9 @@ import (
 var (
 	// ErrDivisionByZero is returned when a division has a zero divisor.
 	ErrDivisionByZero = errors.New("division by zero")
+	// ErrUndefinedResult is returned when an operation has no result for the
+	// operands it was given, such as the square root of a negative number.
+	ErrUndefinedResult = errors.New("undefined result")
 	// ErrUnsupportedOperation is returned for an operation the registry does not know.
 	ErrUnsupportedOperation = errors.New("unsupported operation")
 	// ErrInvalidOperandCount is returned when the operand count does not match the arity.

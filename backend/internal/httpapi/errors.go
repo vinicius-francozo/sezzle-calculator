@@ -16,6 +16,7 @@ const (
 	codeValidationError      = "VALIDATION_ERROR"
 	codeUnsupportedOperation = "UNSUPPORTED_OPERATION"
 	codeDivisionByZero       = "DIVISION_BY_ZERO"
+	codeUndefinedResult      = "UNDEFINED_RESULT"
 	codeOverflow             = "OVERFLOW"
 	codeNotFound             = "NOT_FOUND"
 	codeMethodNotAllowed     = "METHOD_NOT_ALLOWED"
@@ -68,6 +69,11 @@ func describeError(err error) *apiError {
 			fmt.Sprintf("Operation %q requires %d operands, got %d", count.Operation, count.Want, count.Got))
 	case errors.Is(err, calculator.ErrDivisionByZero):
 		return newAPIError(http.StatusBadRequest, codeDivisionByZero, "Division by zero is undefined")
+	case errors.Is(err, calculator.ErrUndefinedResult):
+		// The sentinel is general, but sqrt of a negative number is its only
+		// producer, so the message names it instead of staying vague.
+		return newAPIError(http.StatusBadRequest, codeUndefinedResult,
+			"Square root of a negative number is undefined")
 	case errors.Is(err, calculator.ErrOverflow):
 		return newAPIError(http.StatusBadRequest, codeOverflow, "Overflow: the result could not be calculated")
 	default:
