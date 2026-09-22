@@ -33,6 +33,12 @@ export function useKeyboard(dispatch: Dispatch<CalculatorAction>): void {
       if (event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
+      // Enter is also how a keyboard user activates the keypad button they tabbed to.
+      // Handling it here would dispatch `equals` and cancel that activation, leaving a
+      // visibly focused button that does nothing.
+      if (event.key === 'Enter' && event.target instanceof HTMLButtonElement) {
+        return;
+      }
       const action = actionForKey(event.key);
       if (action === null) {
         return;

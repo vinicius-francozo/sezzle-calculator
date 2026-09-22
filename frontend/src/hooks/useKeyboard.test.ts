@@ -9,6 +9,15 @@ function press(key: string, modifiers: KeyboardEventInit = {}): KeyboardEvent {
   return event;
 }
 
+/** Presses a key while a keypad button has focus, so the event starts at the button. */
+function pressOnButton(key: string): KeyboardEvent {
+  const button = document.body.appendChild(document.createElement('button'));
+  const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true });
+  button.dispatchEvent(event);
+  button.remove();
+  return event;
+}
+
 describe('actionForKey', () => {
   it.each(['0', '5', '9'])('maps the digit %s to a digit action', (key) => {
     expect(actionForKey(key)).toEqual({ type: 'digit', digit: key });
@@ -64,6 +73,27 @@ describe('useKeyboard', () => {
 
     expect(dispatch).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('leaves Enter to the keypad button the user has focused', () => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    const event = pressOnButton('Enter');
+
+    // Enter activates the focused button; swallowing it would leave that button dead.
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('still accepts another key while a keypad button has focus', () => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    const event = pressOnButton('7');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'digit', digit: '7' });
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it('ignores a key that has no button', () => {

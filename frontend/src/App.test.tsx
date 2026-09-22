@@ -63,6 +63,19 @@ describe('App', () => {
     expect(screen.getByTestId('expression')).toHaveTextContent('0');
   });
 
+  it('activates the keypad button reached by tabbing when Enter is pressed', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('12');
+    screen.getByRole('button', { name: 'add' }).focus();
+    await user.keyboard('{Enter}');
+
+    // The global Enter handler must not cancel the focused button's own activation.
+    expect(screen.getByTestId('expression')).toHaveTextContent('12 +');
+    expect(calculateMock).not.toHaveBeenCalled();
+  });
+
   it('ignores keys that have no button', async () => {
     const user = userEvent.setup({ delay: null });
     render(<App />);
