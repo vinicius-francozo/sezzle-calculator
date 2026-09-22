@@ -200,8 +200,27 @@ is ever summoned.
 **Why.** Zero duplicated logic: the keyboard is another way to dispatch, not a second
 implementation. It also means the keyboard is covered by the same reducer tests.
 
+**The contract needs a second mechanism to hold.** A global `keydown` listener and focusable
+buttons compete for `Enter`. Buttons therefore refuse focus on click: `CalcButton` prevents the
+default of `mousedown`, which is pointer-only by definition. A clicked button is never focused, so
+`Enter` always means equals for a mouse user; a button reached by `Tab` keeps focus, and the
+keyboard hook steps aside so `Enter` activates it. Blurring in the `click` handler would not work —
+pressing `Enter` on a tabbed-to button also fires `click`, so it would throw away the keyboard
+user's position. `:focus-visible` distinguishes the cases in a real browser but is unimplemented in
+jsdom, so it could not be tested.
+
+*Why this matters.* The first version of the guard tested the element *type* rather than how it got
+focus. Browsers focus a button when it is clicked, so clicking `1`, `+`, `3` and pressing `Enter`
+re-activated the `3` and silently produced `1 + 33` — the fix for keyboard users had broken the
+mouse users, who are the majority. Both paths are now pinned by tests that fail under mutation.
+
+**Accessibility.** The keypad is a `role="group"` with `aria-busy` while a request is in flight, and
+focus moves to the group rather than to a button when the active button is disabled mid-request —
+parking it on `C` would have made the next `Enter` clear the calculator.
+
 **Scope note.** The key map only covers actions that exist as buttons, so button set and keyboard
-stay in sync. With the current button set (digits, `.`, four operators, `C`, `=`) that means
+stay in sync. `,` is mapped alongside `.` because it is the numpad decimal separator on ABNT2,
+German and French layouts. With the current button set (digits, `.`, four operators, `C`, `=`) that means
 digits, operators, `Enter`/`=` and `Escape`; there is no `Backspace` because there is no backspace
 button.
 
