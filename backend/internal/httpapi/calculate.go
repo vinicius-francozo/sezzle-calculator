@@ -83,6 +83,9 @@ func validateCalculateRequest(req calculateRequest) error {
 	if req.Operands == nil {
 		return newAPIError(http.StatusBadRequest, codeValidationError, `Field "operands" is required`)
 	}
+	// Defence in depth for a future non-HTTP caller: over HTTP this loop
+	// cannot fire, because JSON has no Inf or NaN literal and a number too
+	// large for a float64, such as 1e999, is already rejected by the decoder.
 	for i, operand := range req.Operands {
 		if math.IsInf(operand, 0) || math.IsNaN(operand) {
 			return newAPIError(http.StatusBadRequest, codeValidationError,
