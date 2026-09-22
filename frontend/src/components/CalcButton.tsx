@@ -26,6 +26,12 @@ export function CalcButton({
       className={`key key--${variant}${spanClass}`}
       aria-label={name}
       disabled={disabled}
+      // Every major browser focuses a button when it is clicked, and that residual
+      // focus is indistinguishable from focus reached with Tab: the global Enter
+      // handler would bow out and the browser would re-activate this button instead
+      // of computing the result (see DESIGN.md D11). Suppressing the mousedown default
+      // leaves focus where it was, while Tab still focuses the button as usual.
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onPress}
     >
       {label}

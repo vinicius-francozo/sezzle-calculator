@@ -69,6 +69,28 @@ describe('App', () => {
     expect(screen.getByTestId('expression')).toHaveTextContent('0');
   });
 
+  it('computes with Enter after the expression was entered with the mouse', async () => {
+    calculateMock.mockResolvedValue({ result: 4 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: 'add' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+    expect(screen.getByTestId('expression')).toHaveTextContent('1 + 3');
+
+    // A clicked button must not keep focus, or the browser would re-activate it here
+    // and the display would read `1 + 33` instead of computing (DESIGN.md D11).
+    expect(screen.getByRole('button', { name: '3' })).not.toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'add', operands: [1, 3] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('4');
+  });
+
   it('activates the keypad button reached by tabbing when Enter is pressed', async () => {
     const user = userEvent.setup({ delay: null });
     render(<App />);

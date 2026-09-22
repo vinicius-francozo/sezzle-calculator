@@ -35,7 +35,9 @@ export function useKeyboard(dispatch: Dispatch<CalculatorAction>): void {
       }
       // Enter is also how a keyboard user activates the keypad button they tabbed to.
       // Handling it here would dispatch `equals` and cancel that activation, leaving a
-      // visibly focused button that does nothing.
+      // visibly focused button that does nothing. Only Tab can leave a button focused:
+      // `CalcButton` keeps a click from focusing one, so this never swallows the Enter
+      // of a user who reached for the keypad with the mouse.
       if (event.key === 'Enter' && event.target instanceof HTMLButtonElement) {
         return;
       }
