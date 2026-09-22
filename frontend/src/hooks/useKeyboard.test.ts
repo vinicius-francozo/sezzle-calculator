@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { actionForKey } from './useKeyboard';
+import { renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { actionForKey, useKeyboard } from './useKeyboard';
+
+/** Presses a key on the window, the way the browser delivers it to the hook. */
+function press(key: string, modifiers: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, cancelable: true, ...modifiers });
+  window.dispatchEvent(event);
+  return event;
+}
 
 describe('actionForKey', () => {
   it.each(['0', '5', '9'])('maps the digit %s to a digit action', (key) => {
@@ -21,5 +29,50 @@ describe('actionForKey', () => {
 
   it.each(['a', 'Backspace', 'ArrowLeft', ' ', '('])('ignores the unmapped key %p', (key) => {
     expect(actionForKey(key)).toBeNull();
+  });
+});
+
+describe('useKeyboard', () => {
+  it('dispatches the action of a mapped key and suppresses its default', () => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    const event = press('7');
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'digit', digit: '7' });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('accepts a key that is typed with Shift', () => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    press('+', { shiftKey: true });
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'operator', operator: 'add' });
+  });
+
+  it.each([
+    ['Ctrl', { ctrlKey: true }],
+    ['Meta', { metaKey: true }],
+    ['Alt', { altKey: true }],
+  ])('leaves %s shortcuts to the browser', (_, modifiers) => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    const event = press('-', modifiers);
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('ignores a key that has no button', () => {
+    const dispatch = vi.fn();
+    renderHook(() => useKeyboard(dispatch));
+
+    const event = press('Backspace');
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
   });
 });

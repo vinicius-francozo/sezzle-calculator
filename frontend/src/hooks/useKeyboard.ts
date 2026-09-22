@@ -28,6 +28,11 @@ export function actionForKey(key: string): CalculatorAction | null {
 export function useKeyboard(dispatch: Dispatch<CalculatorAction>): void {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
+      // Ctrl, Meta and Alt belong to browser and OS shortcuts (zoom, tab switching),
+      // which the calculator must never swallow. Shift is part of typing `+` or `*`.
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
       const action = actionForKey(event.key);
       if (action === null) {
         return;
