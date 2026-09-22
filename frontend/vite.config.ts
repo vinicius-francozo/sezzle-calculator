@@ -18,7 +18,8 @@ export default defineConfig({
     },
   },
   test: {
-    globals: true,
+    // No `globals`: every test file imports `describe`, `it` and `expect` from vitest,
+    // and the jest-dom matchers register on that same imported `expect`.
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     // jsdom rendering plus simulated pointer events is slow on cold CI machines, and
