@@ -23,14 +23,6 @@ body {
   color: var(--text);
 }
 
-/*
- * The app mounts into `#root`, so `#root` is what the page lays out and the
- * calculator can only fill what `#root` is given. Centring on `body` made `#root`
- * a flex item, which shrinks to `max-content` — the calculator's `width: 100%`
- * then resolved against roughly 160px and the keys came out half the size a thumb
- * needs (CLAUDE.md 2.2). The centring belongs on `#root` itself, a block that is
- * as wide as the page before it centres anything.
- */
 #root {
   min-height: 100vh;
   display: flex;
@@ -102,8 +94,6 @@ body {
   gap: 8px;
 }
 
-/* The keypad catches the focus a disabled button would otherwise drop. That move is
-   programmatic, so the ring belongs only to a user who is navigating by keyboard. */
 .keypad:focus:not(:focus-visible) {
   outline: none;
 }
@@ -129,12 +119,10 @@ body {
   background: var(--key-action);
 }
 
-/* `=` fills the bottom row: the four cells the twenty single-cell keys leave over. */
 .key--full {
   grid-column: 1 / -1;
 }
 
-/* Sized in `em` so the icon shrinks with the label text of the narrow layout below. */
 .key__icon {
   display: block;
   margin: 0 auto;

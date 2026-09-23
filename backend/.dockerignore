@@ -1,11 +1,9 @@
-# Keep the build context to the Go module itself.
 .git
 .gitignore
 .dockerignore
 Dockerfile
 *.md
 
-# Build and test output.
 bin/
 coverage/
 coverage.out

@@ -7,7 +7,7 @@ All files          |     100 |    99.24 |     100 |     100 |
   App.tsx          |     100 |      100 |     100 |     100 |                   
  src/components    |     100 |    94.11 |     100 |     100 |                   
   CalcButton.tsx   |     100 |      100 |     100 |     100 |                   
-  Display.tsx      |     100 |       75 |     100 |     100 | 22                
+  Display.tsx      |     100 |       75 |     100 |     100 | 15                
   Keypad.tsx       |     100 |      100 |     100 |     100 |                   
  src/hooks         |     100 |      100 |     100 |     100 |                   
   useCalculator.ts |     100 |      100 |     100 |     100 |                   

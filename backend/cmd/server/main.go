@@ -1,4 +1,3 @@
-// Command server runs the calculator HTTP microservice.
 package main
 
 import (
@@ -31,10 +30,6 @@ func main() {
 	}
 }
 
-// run owns the lifecycle of the server: it listens on address and serves
-// until SIGINT or SIGTERM arrives, then drains in-flight requests before
-// returning. The address is a parameter, and not read from the environment
-// here, so that a test can run the whole lifecycle on an ephemeral port.
 func run(ctx context.Context, logger *slog.Logger, address string) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -68,8 +63,6 @@ func run(ctx context.Context, logger *slog.Logger, address string) error {
 	return server.Shutdown(shutdownCtx)
 }
 
-// listenAddress reads the port from the PORT environment variable, falling
-// back to the documented default.
 func listenAddress() string {
 	port := os.Getenv("PORT")
 	if port == "" {

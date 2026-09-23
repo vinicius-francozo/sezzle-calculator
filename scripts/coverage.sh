@@ -1,10 +1,4 @@
 #!/bin/sh
-# Regenerates the coverage reports for both layers.
-#
-#   ./scripts/coverage.sh
-#
-# Everything runs inside pinned containers, so no local Go or Node toolchain is
-# required (DESIGN.md D13). Reports are written to docs/coverage/.
 set -eu
 
 GO_IMAGE="golang:1.26-alpine"
@@ -20,18 +14,11 @@ fi
 
 mkdir -p "$out_dir"
 
-# Scratch files go to a private directory, never next to the reports: the
-# committed docs/coverage/ is a deliverable, so a capture left behind by a
-# Ctrl-C would be swept into the next `git add -A`. The trap covers the
-# interrupt cases too, and re-raises so the caller still sees a killed script.
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 trap 'rm -rf "$tmp_dir"; exit 130' INT
 trap 'rm -rf "$tmp_dir"; exit 143' TERM
 
-# Containers run as the invoking user so that generated files are owned by that
-# user rather than by root. That user has no entry in the image's /etc/passwd,
-# so HOME is redirected to a writable path and each toolchain's cache follows.
 docker_run() {
     docker run --rm \
         --user "$(id -u):$(id -g)" \
@@ -40,27 +27,14 @@ docker_run() {
         "$@"
 }
 
-# Everything the command prints is the report.
 whole_output() {
     cat
 }
 
-# Only the coverage section is. Vitest's run log above it -- the order the test
-# files finish in, every per-test duration, which slow tests it decides to
-# expand -- differs between two runs that measured exactly the same code, so
-# capturing it would churn the committed report on every regeneration. The
-# section itself is the point of the artifact and is kept whole: the per-file
-# table and the summary totals printed under it.
 coverage_section() {
     sed -n '/Coverage report from/,$p'
 }
 
-# Runs a report command with its output going to the terminal and to a file at
-# once. Both halves matter: a failing suite must not be silent, and it must not
-# replace a committed report with its own FAIL output, so the capture is taken
-# aside, passed through $filter and only then promoted over the report. POSIX
-# sh has no PIPESTATUS, hence the marker file to carry the status out of the
-# pipeline.
 report_to() {
     report=$1
     filter=$2
@@ -103,9 +77,6 @@ docker_run \
     "$NODE_IMAGE" \
     npm ci --no-audit --no-fund
 
-# NO_COLOR is what keeps the report readable: Vitest colours its output even
-# when stdout is a pipe, and the escape sequences survive into the committed
-# file.
 echo "==> Frontend tests and coverage ($NODE_IMAGE)"
 report_to "$out_dir/frontend.txt" coverage_section \
     docker_run \

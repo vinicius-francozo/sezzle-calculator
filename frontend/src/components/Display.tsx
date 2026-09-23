@@ -7,16 +7,9 @@ export interface DisplayProps {
   readonly error: string | null;
 }
 
-/**
- * Display shows the past calculations, the current expression and, directly
- * under it, the inline error message (see DESIGN.md D8).
- */
 export function Display({ history, expression, error }: DisplayProps): React.JSX.Element {
   const historyRef = useRef<HTMLOListElement>(null);
 
-  // The history scrolls once it outgrows its box and new entries are appended at the
-  // bottom, where the browser does not follow them: without this the newest
-  // calculation would sit below the fold from about the fifth one on (DESIGN.md D12).
   useEffect(() => {
     const list = historyRef.current;
     if (list !== null) {

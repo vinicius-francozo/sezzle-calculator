@@ -1,26 +1,8 @@
-# One command brings up the whole application:
-#
-#   docker compose up --build
-#
-# Then open http://localhost:3000. Nothing else needs to be installed: the Go
-# and Node toolchains live inside the build stages (DESIGN.md D13).
 name: sezzle-calculator
 
 services:
   backend:
     build: ./backend
-    # The probe reads the very variable the server reads, so the healthcheck
-    # cannot desync from the port in use; $$ keeps the expansion in the
-    # container instead of spending it on Compose.
-    #
-    # That is all it buys. 8080 is still written out in backend/Dockerfile
-    # (ENV PORT, EXPOSE) and in frontend/nginx.conf (the $upstream line), and
-    # nginx.conf is baked into the frontend image, so overriding PORT here
-    # still breaks the proxy: changing the port means changing the nginx
-    # upstream too, and rebuilding the frontend.
-    #
-    # The image has no curl, so the probe runs the static busybox it ships for
-    # exactly this purpose.
     healthcheck:
       test:
         - CMD
@@ -36,10 +18,6 @@ services:
 
   frontend:
     build: ./frontend
-    # The only published port: nginx serves the UI and proxies /api to the
-    # backend, which therefore stays unreachable from outside the stack. 3000
-    # rather than 8080 so that the composed stack and a natively run Go server
-    # (docs/api.md) can be up at the same time without fighting over a port.
     ports:
       - "3000:8080"
     depends_on:

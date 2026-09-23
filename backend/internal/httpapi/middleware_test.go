@@ -35,11 +35,6 @@ func TestRecoverTurnsPanicIntoStructuredError(t *testing.T) {
 	}
 }
 
-// TestHandlerChainRecoversPanics pins Recover into the assembled chain.
-// Exercising Recover on its own, as the test above does, would keep passing if
-// the wiring were dropped from withMiddleware, and a panic would then escape
-// to net/http, which closes the connection instead of answering the contract's
-// envelope.
 func TestHandlerChainRecoversPanics(t *testing.T) {
 	var logs bytes.Buffer
 	panicking := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {

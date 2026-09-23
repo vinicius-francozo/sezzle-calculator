@@ -18,19 +18,16 @@ vi.mock('../lib/api', async (importOriginal) => ({
 
 const calculateMock = vi.mocked(calculate);
 
-/** Replays a sequence of actions through the reducer, like a user pressing keys. */
 function run(actions: readonly CalculatorAction[], from: CalculatorState = initialState) {
   return actions.reduce(calculatorReducer, from);
 }
 
-/** Turns "12.5" into the digit and decimal actions that type it. */
 function type(text: string): CalculatorAction[] {
   return [...text].map((character) =>
     character === '.' ? { type: 'decimal' } : { type: 'digit', digit: character },
   );
 }
 
-/** A promise the test settles by hand, to observe the in-flight state. */
 function deferred<T>() {
   let settle: (value: T) => void = () => undefined;
   let fail: (cause: unknown) => void = () => undefined;
@@ -86,15 +83,12 @@ describe('calculatorReducer', () => {
     const undone = run([...type('1'), undo]);
 
     expect(undone.entry).toEqual({ text: '0', value: 0 });
-    // The zero is still the user's own text, not a result: `7` reads `7`, never `07`.
     expect(run(type('7'), undone).entry.text).toBe('7');
   });
 
   it('does not edit a result, so the next operand keeps its full precision', () => {
     const divided = run([...type('1'), divide, ...type('3'), equals, { type: 'resolved', result: 1 / 3 }]);
 
-    // The display reads 0.333333333333 for a number that is not that; undoing into
-    // that text would make the rounded string the next operand (DESIGN.md D29).
     expect(run([undo], divided).entry.text).toBe('0.333333333333');
 
     const state = run([undo, multiply, ...type('3'), equals], divided);
@@ -106,8 +100,6 @@ describe('calculatorReducer', () => {
     ['a fresh calculator', []],
     ['the result of an operation', [...type('9'), add, ...type('7'), equals, { type: 'resolved', result: 16 }]],
     ['the result of a square root', [...type('9'), sqrt, { type: 'resolved', result: 3 }]],
-    // Neither of these is a result, but both are entries the next digit replaces, and
-    // an entry the next digit replaces is not one the user is still typing.
     ['an operand the operator turned into the accumulator', [...type('12'), add]],
     [
       'the operand a failed calculation left on screen',
@@ -248,8 +240,6 @@ describe('calculatorReducer', () => {
   });
 
   it('chains from the full-precision result when an operator resolved the expression', () => {
-    // The other half of the same bug: here the result is settled by an operator press,
-    // so the accumulator comes from `settle`, not from `applyOperator`.
     const state = run([
       ...type('1'),
       divide,
@@ -268,15 +258,12 @@ describe('calculatorReducer', () => {
     const state = run(type('1'.repeat(20)));
 
     expect(state.entry.text).toBe('1'.repeat(12));
-    // A longer entry parses to a different number than it reads as: seventeen ones
-    // would be typed as 11111111111111111 and stand for 11111111111111112.
     expect(String(state.entry.value)).toBe(state.entry.text);
   });
 
   it('shows a capped operand unchanged once it becomes the accumulator', () => {
     const state = run([...type('9'.repeat(20)), add, ...type('1'), equals]);
 
-    // The rounding the display applies must not rewrite the operand that was sent.
     expect(state.pending).toMatchObject({ operands: [999999999999, 1] });
     expect(formatExpression(state)).toBe('999999999999 + 1');
   });
@@ -305,7 +292,6 @@ describe('calculatorReducer', () => {
     expect(state.history).toHaveLength(10);
     expect(state.history.at(0)?.result).toBe('3');
     expect(state.history.at(-1)?.result).toBe('12');
-    // Ids keep growing, so the entries that survived keep the identity they had.
     expect(state.history.map((entry) => entry.id)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });
 
@@ -347,7 +333,6 @@ describe('calculatorReducer', () => {
       { type: 'rejected', message: 'Division by zero is undefined' },
     ]);
 
-    // The operand that failed is no longer submittable, so `=` asks for nothing.
     expect(run([equals], failed)).toEqual(failed);
   });
 
@@ -433,7 +418,6 @@ describe('calculatorReducer', () => {
 
     expect(rooted).toMatchObject({ accumulator: 2, operator: 'add', pending: null });
     expect(formatExpression(rooted)).toBe('2 + 3');
-    // The waiting operation now reads 2 + 3, so equals gives 5 rather than 11.
     expect(run([equals], rooted).pending).toMatchObject({ operation: 'add', operands: [2, 3] });
   });
 
@@ -472,13 +456,11 @@ describe('calculatorReducer', () => {
 
     const settled = run([{ type: 'resolved', result: 3 }], rooted);
 
-    // The history records the calculation that ran, which is the root alone.
     expect(settled.history).toEqual([{ id: 1, expression: '√9', result: '3' }]);
     expect(formatExpression(settled)).toBe('2 + 3');
   });
 
   it('resolves the expression on equals after a failed square root', () => {
-    // A transient failure is enough: `NETWORK_ERROR` and `TIMEOUT` are minted client-side.
     const failed = run([
       ...type('2'),
       add,
@@ -487,8 +469,6 @@ describe('calculatorReducer', () => {
       { type: 'rejected', message: 'The calculation could not be completed' },
     ]);
 
-    // The root failed; the addition underneath was never attempted and still has its
-    // right-hand operand, so `=` computes with the operand the user typed, un-rooted.
     expect(formatExpression(failed)).toBe('2 + 9');
     expect(run([equals], failed).pending).toEqual({
       operation: 'add',

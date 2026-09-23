@@ -4,47 +4,29 @@ import { SIGNIFICANT_DIGITS, formatNumber } from '../lib/format';
 import { OPERATION_ARITY, OPERATOR_SYMBOLS } from '../lib/operations';
 import type { BinaryOperation, Operation, UnaryOperation } from '../types/api';
 
-/** A calculation that succeeded, kept for the history list (see DESIGN.md D12). */
 export interface HistoryEntry {
-  /** Identity of the entry, stable while older entries drop off the front of the list. */
   readonly id: number;
   readonly expression: string;
   readonly result: string;
 }
 
-/** An operation handed to the API. Its presence means a request is in flight. */
 export interface PendingOperation {
   readonly operation: Operation;
-  /** One operand or two, as the operation's arity demands (see docs/api.md). */
   readonly operands: readonly [number] | readonly [number, number];
   readonly expression: string;
-  /** Operator to chain onto the result, when an operator key triggered the request. */
   readonly nextOperator: BinaryOperation | null;
 }
 
-/**
- * Entry is the operand on screen: the text shown to the user and the exact value
- * it stands for. They are two fields because the text is rounded for display
- * while the arithmetic must keep full precision (see DESIGN.md D7 and D29).
- */
 export interface Entry {
   readonly text: string;
   readonly value: number;
 }
 
 export interface CalculatorState {
-  /** The operand currently being typed or shown. */
   readonly entry: Entry;
-  /** The left-hand operand: the previous result, or the entry when the operator was pressed. */
   readonly accumulator: number | null;
   readonly operator: BinaryOperation | null;
-  /** Whether the next digit starts a fresh entry instead of appending to it. */
   readonly overwriteEntry: boolean;
-  /**
-   * Whether the entry is an operand an operator or `=` may act on. It is the opposite
-   * of {@link CalculatorState.overwriteEntry} everywhere but after a unary operation,
-   * which settles a complete operand that the next digit still replaces (DESIGN.md D24).
-   */
   readonly entryIsOperand: boolean;
   readonly history: readonly HistoryEntry[];
   readonly error: string | null;
@@ -65,20 +47,8 @@ export type CalculatorAction =
 type InputAction = Exclude<CalculatorAction, { type: 'clear' | 'resolved' | 'rejected' }>;
 
 const HISTORY_LIMIT = 10;
-/**
- * Digits accepted in a single operand. It is the display precision itself: a longer
- * entry would be shown rounded by {@link formatNumber} while the arithmetic used the
- * unrounded value, so `Entry.text` and `Entry.value` would stand for different
- * numbers. At twelve digits every typed operand is an exact double that survives the
- * round trip through the display (see DESIGN.md D29).
- */
 const MAX_ENTRY_DIGITS = SIGNIFICANT_DIGITS;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';
-/**
- * How long a request may take before the client gives up. A service that accepts the
- * connection and never answers would otherwise keep the keypad disabled forever
- * (see CLAUDE.md 4.1: the UI never gets stuck in a loading state).
- */
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export const initialState: CalculatorState = {
@@ -92,11 +62,6 @@ export const initialState: CalculatorState = {
   pending: null,
 };
 
-/**
- * calculatorReducer holds every state transition of the calculator. It is pure:
- * the API call it asks for is started by {@link useCalculator}, which feeds the
- * outcome back as a `resolved` or `rejected` action.
- */
 export function calculatorReducer(
   state: CalculatorState,
   action: CalculatorAction,
@@ -109,8 +74,6 @@ export function calculatorReducer(
     case 'rejected':
       return state.pending === null ? state : fail(state, state.pending, action.message);
     default:
-      // Input is ignored while a request is in flight; `clear` always works, so
-      // the calculator can never get stuck waiting.
       return state.pending === null ? applyInput(state, action) : state;
   }
 }
@@ -132,20 +95,14 @@ function applyInput(state: CalculatorState, action: InputAction): CalculatorStat
   }
 }
 
-/** typedEntry builds the entry for typed text, whose value is exactly what it reads. */
 function typedEntry(text: string): Entry {
   return { text, value: Number(text) };
 }
 
-/** resultEntry keeps the full-precision result behind its rounded display text. */
 function resultEntry(value: number): Entry {
   return { text: formatNumber(value), value };
 }
 
-/**
- * withTypedEntry puts text the user is typing on screen: further digits append to it,
- * it counts as an operand, and it clears whatever error the previous attempt left.
- */
 function withTypedEntry(state: CalculatorState, text: string): CalculatorState {
   return {
     ...state,
@@ -160,7 +117,6 @@ function appendDigit(state: CalculatorState, digit: string): CalculatorState {
   if (state.overwriteEntry || state.entry.text === '0') {
     return withTypedEntry(state, digit);
   }
-  // The entry is capped so the text on screen and the value behind it always agree.
   if (digitsIn(state.entry.text) >= MAX_ENTRY_DIGITS) {
     return state;
   }
@@ -175,39 +131,24 @@ function appendDecimal(state: CalculatorState): CalculatorState {
   if (state.overwriteEntry) {
     return withTypedEntry(state, '0.');
   }
-  // A second decimal point in the same operand is ignored.
   if (state.entry.text.includes('.')) {
     return state;
   }
   return withTypedEntry(state, `${state.entry.text}.`);
 }
 
-/**
- * removeLastCharacter is undo: it shortens the entry the user is typing, and leaves
- * a computed result alone. A result is shown rounded to {@link SIGNIFICANT_DIGITS}
- * while `Entry.value` keeps the number behind it, so editing its text would make the
- * next operand the rounded one — the defect `Entry` exists to prevent (DESIGN.md D29).
- * `overwriteEntry` already marks exactly the entries that are not the user's own text.
- */
 function removeLastCharacter(state: CalculatorState): CalculatorState {
-  // A typed `0` is already the empty entry, so undoing it changes nothing. Returning
-  // the same state, rather than an equal one, keeps this in line with every other
-  // inert path in the reducer and spares the tree a render.
   if (state.overwriteEntry || state.entry.text === '0') {
     return state;
   }
   const text = state.entry.text.slice(0, -1);
-  // An emptied entry reads `0`, and is still typed text, so the next digit replaces
-  // it instead of appending to it: `1` undone then `7` is `7`, never `07`.
   return withTypedEntry(state, text === '' ? '0' : text);
 }
 
 function applyOperator(state: CalculatorState, operator: BinaryOperation): CalculatorState {
-  // An operator pressed twice in a row replaces the pending one.
   if (state.operator !== null && !state.entryIsOperand) {
     return { ...state, operator, error: null };
   }
-  // A complete expression is resolved first, so the running total stays on screen.
   if (state.operator !== null && state.accumulator !== null) {
     return request(state, state.operator, state.accumulator, operator);
   }
@@ -222,7 +163,6 @@ function applyOperator(state: CalculatorState, operator: BinaryOperation): Calcu
 }
 
 function applyEquals(state: CalculatorState): CalculatorState {
-  // Incomplete expression: no operator, or no right-hand operand yet.
   if (state.operator === null || state.accumulator === null || !state.entryIsOperand) {
     return state;
   }
@@ -244,11 +184,6 @@ function request(
   };
 }
 
-/**
- * applyUnary sends the number on screen away on its own. It is the only key that
- * asks for a result without `=`, because a unary operation has no second operand
- * to wait for (see DESIGN.md D24).
- */
 function applyUnary(state: CalculatorState, operation: UnaryOperation): CalculatorState {
   const operand = state.entry.value;
   return {
@@ -282,8 +217,6 @@ function settle(
     error: null,
     pending: null,
   };
-  // A unary operation replaces the entry and nothing else: a binary operation that was
-  // already waiting keeps waiting, with this result as its right-hand operand.
   if (isUnary(pending)) {
     return { ...settled, entryIsOperand: true };
   }
@@ -295,45 +228,28 @@ function settle(
   };
 }
 
-/** Whether the pending operation is unary — arity is a property of the operation (docs/api.md). */
 function isUnary(pending: PendingOperation): boolean {
   return OPERATION_ARITY[pending.operation] === 1;
 }
 
-/**
- * History ids only ever grow, so an entry keeps its identity when {@link HISTORY_LIMIT}
- * drops older ones and every index shifts. They restart with a fresh calculator.
- */
 function nextHistoryId(history: readonly HistoryEntry[]): number {
   return (history.at(-1)?.id ?? 0) + 1;
 }
 
 function fail(state: CalculatorState, pending: PendingOperation, message: string): CalculatorState {
-  // The failed expression stays on screen; the next digit replaces the offending operand.
   const failed: CalculatorState = { ...state, overwriteEntry: true, error: message, pending: null };
-  // A unary operation that failed leaves the binary one underneath untouched, right-hand
-  // operand included, so `=` still resolves it. A binary one failed on that operand
-  // itself: it stops being submittable, so `=` does not re-send the request.
   return isUnary(pending) ? failed : { ...failed, entryIsOperand: false };
 }
 
-/** formatExpression renders the line the user is currently working on. */
 export function formatExpression(state: CalculatorState): string {
   if (state.operator === null || state.accumulator === null) {
     return state.pending === null ? state.entry.text : state.pending.expression;
   }
   const waiting = `${formatNumber(state.accumulator)} ${OPERATOR_SYMBOLS[state.operator]}`;
   if (state.pending !== null) {
-    // A binary request is already the whole expression. A unary one is only the
-    // right-hand operand being rooted, so the operation waiting on it goes in front:
-    // `2 + √9`, never a bare `√9` that hides what the user was in the middle of.
-    // It stays out of `PendingOperation.expression`, which the history records: the
-    // calculation that ran, and that the result belongs to, is the root alone.
     const { expression } = state.pending;
     return isUnary(state.pending) ? `${waiting} ${expression}` : expression;
   }
-  // The right-hand operand is shown once it exists — typed, or settled by a unary
-  // operation — and is kept on screen when it made the calculation fail.
   const showsEntry = state.entryIsOperand || state.error !== null;
   return showsEntry ? `${waiting} ${state.entry.text}` : waiting;
 }
@@ -344,10 +260,6 @@ export interface Calculator {
   readonly dispatch: Dispatch<CalculatorAction>;
 }
 
-/**
- * useCalculator owns the calculator state and turns a pending operation into an
- * API call. Responses that arrive after the state moved on are discarded.
- */
 export function useCalculator(): Calculator {
   const [state, dispatch] = useReducer(calculatorReducer, initialState);
   const { pending } = state;
@@ -373,7 +285,6 @@ export function useCalculator(): Calculator {
     return () => {
       current = false;
       clearTimeout(deadline);
-      // The answer is no longer wanted, so the request is dropped rather than left running.
       controller.abort();
     };
   }, [pending]);

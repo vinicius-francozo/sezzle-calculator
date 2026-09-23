@@ -2,14 +2,12 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { actionForKey, useKeyboard } from './useKeyboard';
 
-/** Presses a key on the window, the way the browser delivers it to the hook. */
 function press(key: string, modifiers: KeyboardEventInit = {}): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key, cancelable: true, ...modifiers });
   window.dispatchEvent(event);
   return event;
 }
 
-/** Presses a key while a keypad button has focus, so the event starts at the button. */
 function pressOnButton(key: string): KeyboardEvent {
   const button = document.body.appendChild(document.createElement('button'));
   const event = new KeyboardEvent('keydown', { key, cancelable: true, bubbles: true });
@@ -86,7 +84,6 @@ describe('useKeyboard', () => {
 
     const event = pressOnButton('Enter');
 
-    // Enter activates the focused button; swallowing it would leave that button dead.
     expect(dispatch).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
   });

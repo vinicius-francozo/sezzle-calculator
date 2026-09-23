@@ -8,8 +8,6 @@ import (
 	"github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator"
 )
 
-// Non-finite operands cannot be written as JSON literals, so the guard is
-// exercised directly on the validation function.
 func TestValidateCalculateRequest(t *testing.T) {
 	tests := []struct {
 		name     string

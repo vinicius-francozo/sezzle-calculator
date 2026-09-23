@@ -40,7 +40,6 @@ describe('Display', () => {
       />,
     );
 
-    // An index-based key would remount every entry each time the oldest drops off.
     expect(screen.getByText(/5 × 4/)).toBe(survivor);
   });
 
@@ -48,7 +47,6 @@ describe('Display', () => {
     const first = { id: 1, expression: '2 + 3', result: '5' };
     const { rerender } = render(<Display history={[first]} expression="5" error={null} />);
     const list = screen.getByTestId('history');
-    // jsdom lays nothing out, so the overflow a browser would produce is stated here.
     Object.defineProperty(list, 'scrollHeight', { value: 400, configurable: true });
 
     rerender(

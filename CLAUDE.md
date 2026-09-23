@@ -100,8 +100,7 @@ precedence, no parentheses. Chained input resolves left to right.
 1. **Clean, readable, idiomatic code on both layers.** This is the top priority of the assessment.
    - Go: small packages with a single responsibility; domain logic (the calculator) has **zero**
      knowledge of HTTP; errors returned as values with `errors.Is`/sentinel or typed errors, never
-     strings compared by content; exported identifiers documented with a comment starting with the
-     identifier's name; `gofmt`/`go vet` clean; no premature abstraction.
+     strings compared by content; `gofmt`/`go vet` clean; no premature abstraction.
      **Domain shape (decision D4)** — one small pure function per operation plus a thin dispatcher,
      because that granularity is what makes the unit tests good:
 
@@ -242,8 +241,10 @@ A coverage summary is committed to the repository and referenced from the README
 
 - Conventional-commit-style messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`), imperative mood.
 - Commit in small, self-contained units — one logical change per commit.
-- **All repository content is written in English** (code, comments, docs, commit messages), even
-  though the working conversation is in Brazilian Portuguese.
+- **The code carries no comments.** Names, types and structure are what explain it; the reasoning
+  that does not fit in a name lives in `docs/DESIGN.md` and the README.
+- **All repository content is written in English** (code, docs, commit messages), even though the
+  working conversation is in Brazilian Portuguese.
 - Run the tests before each commit; never commit a red suite.
 
 ---

@@ -30,8 +30,6 @@ func TestListenAddress(t *testing.T) {
 	}
 }
 
-// The server serves the API and then shuts down cleanly when its context is
-// cancelled, which is what the SIGTERM sent by Docker does in production.
 func TestRunServesThenShutsDownOnContextCancellation(t *testing.T) {
 	address := ephemeralAddress(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -54,14 +52,9 @@ func TestRunServesThenShutsDownOnContextCancellation(t *testing.T) {
 		t.Fatal("run() did not return after its context was cancelled")
 	}
 
-	// Returning is not enough: run() must also have closed the listener. If a
-	// refactor ever drops the Shutdown call, run() still returns nil while the
-	// server keeps serving, and in-flight requests die with the process.
 	requireNotServing(t, address)
 }
 
-// A port that cannot be listened on is reported to the caller, which is what
-// makes the process exit non-zero instead of pretending to serve.
 func TestRunReportsAListenFailure(t *testing.T) {
 	occupied, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -77,8 +70,6 @@ func TestRunReportsAListenFailure(t *testing.T) {
 	}
 }
 
-// ephemeralAddress reserves a free port and releases it, so that the server
-// under test can bind it without the test needing a fixed port.
 func ephemeralAddress(t *testing.T) string {
 	t.Helper()
 
@@ -111,8 +102,6 @@ func waitUntilHealthy(t *testing.T, address string) {
 	t.Fatalf("the server did not start listening on %s", address)
 }
 
-// requireNotServing fails unless the address refuses connections, which is
-// what a closed listener does once the server has shut down.
 func requireNotServing(t *testing.T, address string) {
 	t.Helper()
 
@@ -124,8 +113,6 @@ func requireNotServing(t *testing.T, address string) {
 	t.Fatalf("health status = %d after the shutdown, want a connection error", response.StatusCode)
 }
 
-// healthRequest asks for the health endpoint over a connection of its own, so
-// that a pooled connection never stands in for a listener that is gone.
 func healthRequest(address string) (*http.Response, error) {
 	client := &http.Client{
 		Timeout:   2 * time.Second,

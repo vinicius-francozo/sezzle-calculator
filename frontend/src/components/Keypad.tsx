@@ -5,12 +5,9 @@ import type { BinaryOperation } from '../types/api';
 import { CalcButton, type ButtonVariant } from './CalcButton';
 
 interface KeyDefinition {
-  /** The face of the key: its text, or an icon for a key no character stands for. */
   readonly label: React.ReactNode;
-  /** Accessible name, and the identity of the key in the list below. */
   readonly name: string;
   readonly variant: ButtonVariant;
-  /** Whether the key covers the whole bottom row, as `=` does. */
   readonly full?: boolean;
   readonly action: CalculatorAction;
 }
@@ -19,30 +16,16 @@ function digit(value: string): KeyDefinition {
   return { label: value, name: value, variant: 'digit', action: { type: 'digit', digit: value } };
 }
 
-/** An operator key, labelled with its expression symbol unless a legend says more. */
 function operator(name: BinaryOperation, label = OPERATOR_SYMBOLS[name]): KeyDefinition {
   return { label, name, variant: 'operator', action: { type: 'operator', operator: name } };
 }
 
-/**
- * The conventional undo arrow, drawn inline: the project carries no icon library and
- * a single glyph does not earn one. It is hidden from assistive technology because
- * the button already has a name of its own, which must not be announced twice.
- */
 const UNDO_ICON = (
   <svg className="key__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
   </svg>
 );
 
-/**
- * The keypad, in visual order: four columns by six rows, digits in the three left
- * columns and the four arithmetic operators down the right. That is 24 cells for 21
- * keys, and the single span takes up the difference exactly — `=` covers the whole
- * bottom row — so the grid has no hole in it. `0` gives up the two-column span it had
- * before undo arrived, and `%` takes the cell that frees, which is why an operator
- * sits in the bottom digit row. Undo comes first: it is the top-left key (DESIGN.md D29).
- */
 const KEYS: readonly KeyDefinition[] = [
   { label: UNDO_ICON, name: 'undo', variant: 'action', action: { type: 'undo' } },
   { label: 'C', name: 'clear', variant: 'action', action: { type: 'clear' } },
@@ -52,7 +35,6 @@ const KEYS: readonly KeyDefinition[] = [
     variant: 'operator',
     action: { type: 'unary', operation: 'sqrt' },
   },
-  // `x` to the power of `y`, because `^` on a key says nothing on its own.
   operator('power', 'xʸ'),
   digit('7'),
   digit('8'),
@@ -75,18 +57,12 @@ const KEYS: readonly KeyDefinition[] = [
 
 export interface KeypadProps {
   readonly dispatch: Dispatch<CalculatorAction>;
-  /** While a request is in flight only `C` stays live, so the UI cannot get stuck. */
   readonly busy: boolean;
 }
 
 export function Keypad({ dispatch, busy }: KeypadProps): React.JSX.Element {
   const keypadRef = useRef<HTMLDivElement>(null);
 
-  // A request disables the button that was just pressed, and a disabled element cannot
-  // keep focus: the browser drops it to <body>, stranding a keyboard user at the top of
-  // the document. The keypad takes that focus instead, so Tab resumes here and the
-  // `aria-busy` state is the one a screen reader announces. It is not a button, so Enter
-  // still means equals while the request is in flight.
   useEffect(() => {
     const keypad = keypadRef.current;
     if (busy && keypad !== null && holdsStrandedFocus(keypad)) {
@@ -118,7 +94,6 @@ export function Keypad({ dispatch, busy }: KeypadProps): React.JSX.Element {
   );
 }
 
-/** Whether focus sits on a button the keypad just disabled, or was already dropped by one. */
 function holdsStrandedFocus(keypad: HTMLDivElement): boolean {
   const active = document.activeElement;
   return active === document.body || keypad.contains(active);

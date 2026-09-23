@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-// Recover turns any panic raised downstream into the contract's INTERNAL_ERROR
-// response plus a log line carrying the stack. No panic escapes a handler and
-// no stack trace ever reaches the client.
 func Recover(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -30,8 +27,6 @@ func Recover(logger *slog.Logger, next http.Handler) http.Handler {
 	})
 }
 
-// RequestLog logs one structured line per request, with its outcome and how
-// long it took.
 func RequestLog(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -48,9 +43,6 @@ func RequestLog(logger *slog.Logger, next http.Handler) http.Handler {
 	})
 }
 
-// CORS allows any origin, for the reviewer who runs the frontend and the API
-// natively on different ports. In the composed stack nginx puts both behind a
-// single origin, so these headers are never needed there.
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -67,8 +59,6 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-// statusRecorder remembers the status code written to the response so the
-// request log can report it.
 type statusRecorder struct {
 	http.ResponseWriter
 	status int

@@ -20,7 +20,6 @@ function deferred<T>() {
   return { promise, settle };
 }
 
-/** How many cells of the keypad grid a key covers, per the span class in styles.css. */
 function cellsOf(key: HTMLElement): number {
   return key.classList.contains('key--full') ? 4 : 1;
 }
@@ -84,8 +83,6 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: '3' }));
     expect(screen.getByTestId('expression')).toHaveTextContent('1 + 3');
 
-    // A clicked button must not keep focus, or the browser would re-activate it here
-    // and the display would read `1 + 33` instead of computing (DESIGN.md D11).
     expect(screen.getByRole('button', { name: '3' })).not.toHaveFocus();
     await user.keyboard('{Enter}');
 
@@ -122,7 +119,6 @@ describe('App', () => {
     screen.getByRole('button', { name: 'equals' }).focus();
     await user.keyboard('{Enter}');
 
-    // The button that was pressed is disabled now, so its focus would fall to <body>.
     expect(keypad).toHaveAttribute('aria-busy', 'true');
     expect(keypad).toHaveFocus();
 
@@ -141,7 +137,6 @@ describe('App', () => {
     screen.getByRole('button', { name: 'add' }).focus();
     await user.keyboard('{Enter}');
 
-    // The global Enter handler must not cancel the focused button's own activation.
     expect(screen.getByTestId('expression')).toHaveTextContent('12 +');
     expect(calculateMock).not.toHaveBeenCalled();
   });
@@ -300,7 +295,6 @@ describe('App', () => {
       'Square root of a negative number is undefined',
     );
     expect(screen.getByTestId('expression')).toHaveTextContent('-9');
-    // Only the subtraction that succeeded is recorded; the failure stays inline.
     expect(screen.getByTestId('history')).toHaveTextContent('0 − 9 = -9');
   });
 
@@ -349,9 +343,7 @@ describe('App', () => {
 
     const undoKey = screen.getByRole('button', { name: 'undo' });
 
-    // The grid places the keys in source order, so the first one is the top-left cell.
     expect(screen.getByRole('group', { name: 'Keypad' }).firstElementChild).toBe(undoKey);
-    // The face of the key is the arrow alone: no character stands for undo.
     expect(undoKey.textContent).toBe('');
     expect(undoKey.querySelector('svg')).not.toBeNull();
   });
@@ -365,7 +357,6 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: '3' }));
     await user.click(screen.getByRole('button', { name: 'undo' }));
 
-    // Anchored: `12` is a substring of the `123` an undo that did nothing would leave.
     expect(screen.getByTestId('expression')).toHaveTextContent(/^12$/);
   });
 

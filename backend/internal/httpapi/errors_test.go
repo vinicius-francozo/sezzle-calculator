@@ -8,8 +8,6 @@ import (
 	"testing"
 )
 
-// An error nobody mapped must still leave the service through the contract's
-// envelope, without leaking what went wrong internally.
 func TestDescribeErrorFallsBackToInternalError(t *testing.T) {
 	got := describeError(errors.New("the database caught fire"))
 
@@ -24,8 +22,6 @@ func TestDescribeErrorFallsBackToInternalError(t *testing.T) {
 	}
 }
 
-// Transport errors already carry their own status, code and message, and
-// survive being wrapped on the way out.
 func TestDescribeErrorKeepsTransportErrors(t *testing.T) {
 	want := newAPIError(http.StatusBadRequest, codeInvalidJSON, "Request body is not valid JSON")
 
@@ -39,12 +35,6 @@ func TestDescribeErrorKeepsTransportErrors(t *testing.T) {
 	}
 }
 
-// The codes are the frozen half of the contract: the frontend branches on
-// them, so a typo in one is a broken client rather than a reworded message.
-// Everywhere else in the suite a response is compared against the constant
-// itself, which pins the mapping but not the spelling; this is the one place
-// that transcribes the literal strings of the contract, so that changing what
-// a constant holds has to be a deliberate edit here as well.
 func TestErrorCodesMatchTheContract(t *testing.T) {
 	tests := []struct {
 		got  string
@@ -71,10 +61,6 @@ func TestErrorCodesMatchTheContract(t *testing.T) {
 		})
 	}
 
-	// The rows pin the spelling of the codes they name, and nothing else: a
-	// code added to the contract later would simply have no row. Walking
-	// errorCodes, the declared set, closes that — every code has to be
-	// transcribed here before the suite is green again.
 	for _, code := range errorCodes {
 		if !pinned[code] {
 			t.Errorf("code %q has no row in this table: every code must be transcribed from the contract", code)

@@ -6,19 +6,12 @@ import {
   type ServerErrorCode,
 } from '../types/api';
 
-// `||`, not `??`: an empty `.env` entry or an empty Docker build arg inlines as `''`,
-// which would send every call to a same-origin `/v1/calculate` that does not exist.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const NETWORK_FAILURE_MESSAGE = 'Could not reach the calculator service';
 const TIMEOUT_MESSAGE = 'The calculator service took too long to respond';
 const UNEXPECTED_RESPONSE_MESSAGE = 'The calculator service returned an unexpected response';
 
-/**
- * ApiError is the single failure channel of the client: HTTP errors, network
- * failures and unreadable responses all surface as one shape, so the UI has one
- * place to render them (see DESIGN.md D8).
- */
 export class ApiError extends Error {
   readonly code: ApiErrorCode;
 
@@ -29,12 +22,6 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * calculate performs one arithmetic operation through `POST /api/v1/calculate`.
- * It resolves with the result it verified in the response — the echoed request
- * is not checked, so it is not handed back — or rejects with an {@link ApiError}.
- * The optional signal lets the caller give up on a service that never answers.
- */
 export async function calculate(
   request: CalculateRequest,
   signal?: AbortSignal,
@@ -48,7 +35,6 @@ export async function calculate(
       signal,
     });
   } catch {
-    // An aborted request is the caller's own deadline, not an unreachable service.
     throw signal?.aborted === true
       ? new ApiError('TIMEOUT', TIMEOUT_MESSAGE)
       : new ApiError('NETWORK_ERROR', NETWORK_FAILURE_MESSAGE);
@@ -69,9 +55,6 @@ async function readJson(response: Response, signal?: AbortSignal): Promise<unkno
   try {
     return (await response.json()) as unknown;
   } catch {
-    // The deadline can fire after `fetch` resolved but while the body is still
-    // streaming. That read failure is the caller giving up, not an unreadable response,
-    // so it gets the timeout message rather than the generic one.
     if (signal?.aborted === true) {
       throw new ApiError('TIMEOUT', TIMEOUT_MESSAGE);
     }
@@ -79,7 +62,6 @@ async function readJson(response: Response, signal?: AbortSignal): Promise<unkno
   }
 }
 
-/** Maps the API error envelope onto an ApiError, falling back when it is unreadable. */
 function toApiError(body: unknown): ApiError {
   if (!isRecord(body) || !isRecord(body.error)) {
     return new ApiError('UNEXPECTED_ERROR', UNEXPECTED_RESPONSE_MESSAGE);

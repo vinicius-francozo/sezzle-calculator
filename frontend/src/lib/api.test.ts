@@ -28,7 +28,6 @@ async function expectApiError(promise: Promise<unknown>): Promise<ApiError> {
   throw new Error('expected the call to reject with an ApiError');
 }
 
-/** Reloads the module with a stubbed environment, since the base URL is read once. */
 async function calculateWithBaseUrl(value: string | undefined): Promise<void> {
   vi.resetModules();
   vi.stubEnv('VITE_API_BASE_URL', value);
@@ -184,7 +183,6 @@ describe('calculate', () => {
   });
 
   it('rejects a success response whose result is a number but not finite', async () => {
-    // JSON has no Infinity, but an out-of-range literal parses into one.
     respondWithText(200, '{"operation":"divide","operands":[12,4],"result":1e999}');
 
     const error = await expectApiError(calculate(REQUEST));

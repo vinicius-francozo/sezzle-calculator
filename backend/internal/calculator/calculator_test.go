@@ -16,8 +16,7 @@ func TestAdd(t *testing.T) {
 	}{
 		{name: "positive operands", a: 2, b: 3, want: 5},
 		{name: "negative operand", a: 2, b: -3, want: -1},
-		// Binary floating point noise is a property of float64. The domain returns
-		// it faithfully; hiding it is the display's job, not the arithmetic's.
+
 		{name: "decimals", a: 0.1, b: 0.2, want: 0.30000000000000004},
 		{name: "identity", a: 7, b: 0, want: 7},
 	}
@@ -112,7 +111,7 @@ func TestPower(t *testing.T) {
 		{name: "negative exponent", a: 2, b: -2, want: 0.25},
 		{name: "fractional exponent is a root", a: 9, b: 0.5, want: 3},
 		{name: "zero exponent", a: 7, b: 0, want: 1},
-		// IEEE 754 defines 0**0 as 1, which is also what a desktop calculator shows.
+
 		{name: "zero to the zero", a: 0, b: 0, want: 1},
 		{name: "identity", a: 7, b: 1, want: 7},
 	}
@@ -137,8 +136,7 @@ func TestSqrt(t *testing.T) {
 		{name: "irrational result", a: 2, want: math.Sqrt2},
 		{name: "fraction", a: 0.25, want: 0.5},
 		{name: "zero", a: 0, want: 0},
-		// sqrt(MaxFloat64), about 1.34e154: the largest finite result Sqrt
-		// can return, since squaring anything larger leaves float64.
+
 		{name: "largest float64", a: math.MaxFloat64, want: 1.3407807929942596e+154},
 		{name: "negative operand", a: -9, wantErr: calculator.ErrNegativeSqrt},
 		{name: "negative fraction", a: -0.25, wantErr: calculator.ErrNegativeSqrt},
@@ -158,9 +156,6 @@ func TestSqrt(t *testing.T) {
 	}
 }
 
-// Negative zero is not a negative number, and IEEE 754 defines its square root
-// as itself, so it is answered rather than rejected. A plain comparison cannot
-// tell -0 from 0, hence the sign check.
 func TestSqrtOfNegativeZero(t *testing.T) {
 	negativeZero := math.Copysign(0, -1)
 
@@ -196,24 +191,18 @@ func TestPercent(t *testing.T) {
 	}
 }
 
-// The percentage is taken before the multiplication, not after: a * b would
-// overflow here, while 2% of 1e308 is perfectly representable.
 func TestPercentDividesBeforeMultiplying(t *testing.T) {
 	if got := calculator.Percent(2, 1e308); got != 2e306 {
 		t.Errorf("Percent(2, 1e308) = %v, want %v", got, 2e306)
 	}
 }
 
-// Pure functions do not guard against non-finite results: that check belongs
-// to Evaluate, once, for every operation (see docs/DESIGN.md D4).
 func TestMultiplyDoesNotGuardAgainstOverflow(t *testing.T) {
 	if got := calculator.Multiply(1e308, 10); !math.IsInf(got, 1) {
 		t.Errorf("Multiply(1e308, 10) = %v, want +Inf", got)
 	}
 }
 
-// Power is the first operation that can produce NaN, and it does not guard
-// against that either: both non-finite outcomes belong to Evaluate.
 func TestPowerDoesNotGuardAgainstNonFiniteResults(t *testing.T) {
 	if got := calculator.Power(0, -1); !math.IsInf(got, 1) {
 		t.Errorf("Power(0, -1) = %v, want +Inf", got)
