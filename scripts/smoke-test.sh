@@ -26,20 +26,42 @@ headers="$work_dir/headers"
 body="$work_dir/body"
 
 failures=0
-response_ok=yes
 
-# Records one failed expectation together with the whole response. A CI log that
-# says only "exit 1" cannot be read from a browser tab a week later, so the
-# status line, the headers and the body are all printed at the point of failure.
+# The check that is still open, and what it has broken so far. A check opens
+# when its request is made and closes when the next one starts or the summary
+# is reached, which is what lets the follow-up assertions below belong to it.
+open_check=
+broken=
+
+# Records one broken expectation against the open check. Nothing is printed
+# here: the verdict belongs to close_check, so that a check whose follow-up
+# assertion fails cannot first announce itself as ok.
 fail() {
-    failures=$((failures + 1))
-    response_ok=no
-    echo "FAIL  $description: $1"
-    echo "----- response -----"
-    cat "$headers"
-    cat "$body"
-    echo
-    echo "--------------------"
+    broken="$broken      - $1
+"
+}
+
+# Prints the open check's one and only verdict. A CI log that says just "exit 1"
+# cannot be read from a browser tab a week later, so a failure carries every
+# expectation it broke and the whole response -- status line, headers and body,
+# once for the check rather than once per broken expectation.
+close_check() {
+    [ -n "$open_check" ] || return 0
+
+    if [ -z "$broken" ]; then
+        echo "ok    $open_check"
+    else
+        failures=$((failures + 1))
+        echo "FAIL  $open_check"
+        printf '%s' "$broken"
+        echo "----- response -----"
+        cat "$headers" "$body"
+        echo
+        echo "--------------------"
+    fi
+
+    open_check=
+    broken=
 }
 
 # check DESCRIPTION EXPECTED_STATUS JQ_PREDICATE [curl arguments...]
@@ -50,12 +72,12 @@ fail() {
 # the predicate itself, and swallowing it would blame the application for a
 # broken assertion.
 check() {
-    description=$1
+    close_check
+    open_check=$1
     expected_status=$2
     predicate=$3
     shift 3
 
-    response_ok=yes
     : >"$headers"
     : >"$body"
     status=$(curl --silent --show-error --dump-header "$headers" --output "$body" \
@@ -67,21 +89,19 @@ check() {
     fi
     if [ -n "$predicate" ] && ! jq --exit-status "$predicate" "$body" >/dev/null; then
         fail "body does not satisfy: $predicate"
-        return 0
     fi
-    echo "ok    $description"
 }
 
-# The two assertions below read the response of the most recent check, which is
-# why they follow it immediately -- and why they stay quiet when that check has
-# already printed the response.
+# The two assertions below read the response of the open check, which is why
+# they follow it immediately -- and why they stay quiet once it has broken, when
+# the response they would read is already known to be the wrong one.
 check_header() {
-    [ "$response_ok" = yes ] || return 0
+    [ -z "$broken" ] || return 0
     grep -i -q "^$1:.*$2" "$headers" || fail "expected header '$1: $2'"
 }
 
 check_body_contains() {
-    [ "$response_ok" = yes ] || return 0
+    [ -z "$broken" ] || return 0
     grep -q -- "$1" "$body" || fail "body does not contain '$1'"
 }
 
@@ -103,6 +123,8 @@ check "division by zero is refused" 400 '.error.code == "DIVISION_BY_ZERO"' \
 check "a wrong method is refused" 405 '.error.code == "METHOD_NOT_ALLOWED"' \
     --request GET "$calculate"
 check_header 'Allow' 'POST'
+
+close_check
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures check(s) failed against $base_url" >&2
