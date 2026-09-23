@@ -19,13 +19,24 @@
 
 body {
   margin: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/*
+ * The app mounts into `#root`, so `#root` is what the page lays out and the
+ * calculator can only fill what `#root` is given. Centring on `body` made `#root`
+ * a flex item, which shrinks to `max-content` — the calculator's `width: 100%`
+ * then resolved against roughly 160px and the keys came out half the size a thumb
+ * needs (CLAUDE.md 2.2). The centring belongs on `#root` itself, a block that is
+ * as wide as the page before it centres anything.
+ */
+#root {
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 16px;
-  background: var(--surface);
-  color: var(--text);
 }
 
 .calculator {
