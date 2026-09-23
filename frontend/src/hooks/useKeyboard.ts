@@ -18,9 +18,10 @@ const KEY_ACTIONS: Record<string, CalculatorAction> = {
   '%': { type: 'operator', operator: 'percent' },
   // No keyboard has a square root key. `@` is what the Windows calculator uses for
   // it, which is the closest thing to a convention there is. It does not reach every
-  // layout: on ABNT2, German and French, `@` needs AltGr, which Windows reports as
-  // `ctrlKey && altKey` and the modifier guard below drops, and `^` is a dead key that
-  // arrives as `Dead`. Both fall back to the button, which is the whole interface on
+  // layout: on German and French, `@` needs AltGr, which Windows reports as
+  // `ctrlKey && altKey` and the modifier guard below drops. (On ABNT2 it is plain
+  // Shift+2 and reaches fine.) `^` is a dead key on ABNT2, German and French alike,
+  // arriving as `Dead`. Both fall back to the button, which is the whole interface on
   // mobile anyway (see CLAUDE.md 2.2), so the keys degrade rather than mislead.
   '@': { type: 'unary', operation: 'sqrt' },
   '=': { type: 'equals' },
