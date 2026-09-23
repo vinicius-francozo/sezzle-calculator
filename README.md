@@ -203,9 +203,10 @@ backend image is 9.5 MB.
 - **History is per-session and in-memory** — last 10 successful calculations, no persistence, no
   history endpoint.
 - **The keyboard maps exactly the actions that exist as buttons** (`0-9 . + - * /`, `Enter`/`=`,
-  `Escape`, `^` for power, `%` for percent, `@` for square root as the Windows calculator binds it,
-  and `,` as an alias for `.` since that is the numpad separator on ABNT2, German and French
-  layouts). There is no `Backspace` because there is no backspace button; `C` clears. On mobile
+  `Escape`, `Backspace` for undo, `^` for power, `%` for percent, `@` for square root as the Windows
+  calculator binds it, and `,` as an alias for `.` since that is the numpad separator on ABNT2,
+  German and French layouts). Every mapped key has a button and no key exists without one, so the
+  two input methods can never drift apart. On mobile
   there is no text input anywhere, so the on-screen keyboard is never summoned.
 - **CORS is permissive on the backend.** It is irrelevant in the composed stack, where everything is
   same-origin, and exists for whoever runs the two layers natively on different ports.

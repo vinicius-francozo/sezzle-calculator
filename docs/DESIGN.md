@@ -668,3 +668,22 @@ fall out of it. They are recorded because they were found by asking, not by gues
 - **Undo down to zero.** Undo on a typed `0` is idempotent, and `2 + 3` undone twice gives `2 + 0`,
   which `=` computes as `2` — a typed zero is a legitimate operand. Both follow from "it edits the
   current entry and nothing else".
+
+**Why the failed-request case cannot simply be widened.** Review tested the naive widening — making
+`fail` leave the entry editable — and it is unsafe, not merely debatable. `fail`'s unary branch
+deliberately preserves the entry, and that entry can itself be a *result*: `0 − 9 =` shows `−9`, and
+a rejected `√` after it would then let undo produce `"-"`, whose `Number()` is `NaN`. `1e+21` trims
+to `1e+2`, which is `100`. Widening therefore needs a third state bit meaning "these are the user's
+own characters" — which is the flag overloading D28 was written about. The strict rule stays.
+
+**What the guard is worth, measured.** Driving the real reducer for 200,000 random actions, every
+undo that changed an entry acted on one where `Number(text) === value`; 30,961 were correctly inert.
+Without the guard, `1 ÷ 3 =` then undo chains from `0.333333333333` instead of `1/3` — and the two
+cases above (`1e+21 → 100`, `−9 → NaN`) are worse than the defect the rule was written for. One
+condition closes all of them.
+
+**The layout the 21st key forced.** 21 keys plus a two-column `0` plus a four-column `=` is 25
+cells, which is not a multiple of four. Rather than add a row — which would make the calculator
+taller on a phone — `0` gives up its span and `%` moves into the freed cell, keeping **4 × 6 = 24
+cells for 21 keys** with `=` as the only span. Measured in a browser at five widths, the keypad's
+height and every key's box are byte-identical to the 20-key layout: the new key cost zero pixels.
