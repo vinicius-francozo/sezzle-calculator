@@ -1,7 +1,7 @@
 #!/bin/sh
 # Exercises the composed stack through the nginx proxy, the way a user reaches
 # it: every request goes to the published frontend port, never to the backend
-# container directly (DESIGN.md D14). What it asserts is the frozen contract in
+# container directly (DESIGN.md D13). What it asserts is the frozen contract in
 # docs/api.md, so a drift between the two layers fails here.
 #
 #   docker compose up --build --detach --wait

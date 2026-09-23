@@ -25,7 +25,7 @@ export interface PendingOperation {
 /**
  * Entry is the operand on screen: the text shown to the user and the exact value
  * it stands for. They are two fields because the text is rounded for display
- * while the arithmetic must keep full precision (see DESIGN.md D6 and D7).
+ * while the arithmetic must keep full precision (see DESIGN.md D7 and D29).
  */
 export interface Entry {
   readonly text: string;
@@ -70,7 +70,7 @@ const HISTORY_LIMIT = 10;
  * entry would be shown rounded by {@link formatNumber} while the arithmetic used the
  * unrounded value, so `Entry.text` and `Entry.value` would stand for different
  * numbers. At twelve digits every typed operand is an exact double that survives the
- * round trip through the display (see DESIGN.md D6 and D7).
+ * round trip through the display (see DESIGN.md D29).
  */
 const MAX_ENTRY_DIGITS = SIGNIFICANT_DIGITS;
 const UNEXPECTED_FAILURE_MESSAGE = 'The calculation could not be completed';

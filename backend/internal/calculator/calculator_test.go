@@ -16,8 +16,8 @@ func TestAdd(t *testing.T) {
 	}{
 		{name: "positive operands", a: 2, b: 3, want: 5},
 		{name: "negative operand", a: 2, b: -3, want: -1},
-		// Binary floating point noise is a property of float64, hidden by the
-		// frontend formatting rather than by the domain (see docs/DESIGN.md D6).
+		// Binary floating point noise is a property of float64. The domain returns
+		// it faithfully; hiding it is the display's job, not the arithmetic's.
 		{name: "decimals", a: 0.1, b: 0.2, want: 0.30000000000000004},
 		{name: "identity", a: 7, b: 0, want: 7},
 	}
@@ -205,7 +205,7 @@ func TestPercentDividesBeforeMultiplying(t *testing.T) {
 }
 
 // Pure functions do not guard against non-finite results: that check belongs
-// to Evaluate (see docs/DESIGN.md D5).
+// to Evaluate, once, for every operation (see docs/DESIGN.md D4).
 func TestMultiplyDoesNotGuardAgainstOverflow(t *testing.T) {
 	if got := calculator.Multiply(1e308, 10); !math.IsInf(got, 1) {
 		t.Errorf("Multiply(1e308, 10) = %v, want +Inf", got)

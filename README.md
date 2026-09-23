@@ -1,7 +1,5 @@
 # Calculator — React + Go
 
-[![CI](https://github.com/vinicius-francozo/sezzle-calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/vinicius-francozo/sezzle-calculator/actions/workflows/ci.yml)
-
 A full-stack calculator: a React (TypeScript) frontend consuming a Go REST microservice that
 performs the arithmetic. Built as a technical assessment, with the emphasis on clean, readable and
 idiomatic code, meaningful tests and honest documentation rather than on feature count.
@@ -223,8 +221,8 @@ mandatory scope was complete.
 - The history auto-scrolls to the newest entry even if the user had scrolled up to read an older one.
 - `sqrt(-1)` and `(-8)^(1/3)` are the same class of failure — an operation undefined for its
   operands — but the contract gives them different codes (`UNDEFINED_RESULT` and `OVERFLOW`),
-  because the `UNDEFINED_RESULT` row names exactly one producer. A contract-level fix, recorded in
-  [`docs/DESIGN.md`](docs/DESIGN.md) D26 rather than smuggled.
+  because the `UNDEFINED_RESULT` row names exactly one producer. Fixing it means changing the
+  contract, not the code, so it is recorded here rather than smuggled.
 - `^` is a dead key on ABNT2, German and French layouts and `@` needs AltGr on German and French,
   so those two keyboard shortcuts degrade to button-only there.
 
@@ -246,15 +244,15 @@ docs/
   DESIGN.md             every engineering decision, with its reasoning
   PLAN.md               task breakdown and definition of done
   coverage/             committed coverage reports
-prompts/                every prompt used to build this, including the agent briefs
+prompts/                every prompt that drove this project, translated
 scripts/coverage.sh     runs both suites in containers
 compose.yaml
 ```
 
 ## How this was built
 
-The assessment invites the use of AI tooling and asks for the prompts. All of them are in
-[`prompts/`](prompts/), including the verbatim briefs given to each agent.
+The assessment invites the use of AI tooling and asks for the prompts. They are in
+[`prompts/`](prompts/), in the order they were sent.
 
 The work ran as parallel tracks — backend, frontend and containers first, then the optional
 operations and CI — each in its own git worktree and branch with a disjoint file scope, and each

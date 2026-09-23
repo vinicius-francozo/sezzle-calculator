@@ -1,12 +1,12 @@
 # Prompts Log
 
-This folder keeps a chronological, verbatim-in-substance record of every prompt used to build
-this project, as requested by the assessment ("Share any prompts that you used in your work").
+Every prompt that drove this project, in the order it was sent, as requested by the assessment
+("Share any prompts that you used in your work").
 
-The prompts were originally written in Brazilian Portuguese and are translated to English here.
+They were originally written in Brazilian Portuguese and are translated to English here.
 Translation preserves intent and detail; nothing was added or removed.
 
 | File | Content |
 | --- | --- |
-| [01-project-setup.md](01-project-setup.md) | Assessment brief, repository bootstrap, architecture and scope decisions |
-| [02-agent-briefs.md](02-agent-briefs.md) | The verbatim briefs given to the development, review and fix agents |
+| [1-project-setup.md](1-project-setup.md) | The assessment brief, the repository bootstrap, and the first architecture and scope decisions |
+| [2-design-and-workflow.md](2-design-and-workflow.md) | The design discussion that froze the contract, and the development workflow |

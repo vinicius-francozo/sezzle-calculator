@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 /**
  * The dev server proxies `/api` to the Go service so that development and the
- * composed stack (nginx reverse proxy, see docs/DESIGN.md D14) behave identically
+ * composed stack (nginx reverse proxy, see docs/DESIGN.md D13) behave identically
  * and `VITE_API_BASE_URL` can default to a same-origin `/api`.
  */
 export default defineConfig({

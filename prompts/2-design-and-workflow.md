@@ -4,7 +4,7 @@
 **Tool:** Claude Code (Opus 5)
 
 These are the prompts that settled the design and the way the work would be executed, after the
-repository bootstrap in [01-project-setup.md](01-project-setup.md). Translated from Brazilian
+repository bootstrap in [1-project-setup.md](1-project-setup.md). Translated from Brazilian
 Portuguese; intent and detail preserved.
 
 ---
@@ -70,7 +70,7 @@ Chosen in response to concrete alternatives:
 **Outcome.** `docs/api.md` (frozen contract), `docs/DESIGN.md` (the running decision log the user
 asked for) and `docs/PLAN.md` (task breakdown) were written before any implementation. The domain
 was shaped as pure functions plus a thin dispatcher (D4), which also made it natural to check
-overflow exactly once, in the dispatcher, keeping the pure functions honest (D5).
+overflow exactly once, in the dispatcher, keeping the pure functions honest (D4).
 
 ---
 
@@ -106,15 +106,14 @@ autonomously through the deliverables stage; use the strongest available model f
 **Outcome.** Three git worktrees with disjoint file scopes, each running
 `dev → review → fix → review → … → PASS → merge`, with the reviewer always a different agent from
 the author and explicitly forbidden from fixing anything. Recorded as decision D18 and in
-`CLAUDE.md` §9. The briefs themselves are in
-[02-agent-briefs.md](02-agent-briefs.md).
+`CLAUDE.md` §9. How that workflow is set up, and what it caught, is recorded in `docs/DESIGN.md` D18.
 
 ---
 
 ## What the workflow actually caught
 
 Recorded here because it is the honest answer to "was the extra process worth it". Details in
-`docs/DESIGN.md` D23.
+`docs/DESIGN.md` D18.
 
 - An arithmetic bug: chaining from the rounded **display string** made `1 ÷ 3 × 3` produce
   `0.999999999999`.

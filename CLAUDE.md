@@ -267,5 +267,5 @@ done in `docs/PLAN.md` plus §3 of this document, runs the suite for real, and n
 itself. Fixes are scoped strictly to the reported findings. Three rounds maximum before escalating
 to the user.
 
-Agent briefs are committed verbatim to `prompts/02-agent-briefs.md` — they are prompts, and the
-assessment asks for the prompts used.
+`prompts/` holds the prompts that drove the project; the workflow itself is described in
+`docs/DESIGN.md` D18.
