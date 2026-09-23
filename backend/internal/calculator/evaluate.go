@@ -20,6 +20,9 @@ var registry = map[Operation]operation{
 	OpSubtract: {arity: 2, apply: func(o []float64) (float64, error) { return Subtract(o[0], o[1]), nil }},
 	OpMultiply: {arity: 2, apply: func(o []float64) (float64, error) { return Multiply(o[0], o[1]), nil }},
 	OpDivide:   {arity: 2, apply: func(o []float64) (float64, error) { return Divide(o[0], o[1]) }},
+	OpPower:    {arity: 2, apply: func(o []float64) (float64, error) { return Power(o[0], o[1]), nil }},
+	OpSqrt:     {arity: 1, apply: func(o []float64) (float64, error) { return Sqrt(o[0]) }},
+	OpPercent:  {arity: 2, apply: func(o []float64) (float64, error) { return Percent(o[0], o[1]), nil }},
 }
 
 // Evaluate resolves op in the registry, validates the operand count against its
@@ -40,10 +43,10 @@ func Evaluate(op Operation, operands []float64) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	// The NaN half of this guard cannot fire today: with finite operands none
-	// of the four operations produces NaN, because the only input that would,
-	// 0/0, is already rejected as ErrDivisionByZero. It is kept for the
-	// operations a future registry entry may add, such as Sqrt.
+	// Both halves of this guard fire in practice: Power returns ±Inf for zero
+	// raised to a negative power and NaN for a negative base raised to a
+	// fractional exponent. Neither is representable in JSON, so without this
+	// check the client would receive 200 OK with an empty body.
 	if math.IsInf(result, 0) || math.IsNaN(result) {
 		return 0, ErrOverflow
 	}
