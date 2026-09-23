@@ -24,6 +24,9 @@ const KEY_ACTIONS: Record<string, CalculatorAction> = {
   // arriving as `Dead`. Both fall back to the button, which is the whole interface on
   // mobile anyway (see CLAUDE.md 2.2), so the keys degrade rather than mislead.
   '@': { type: 'unary', operation: 'sqrt' },
+  // The undo key is a backspace over the entry, so `Backspace` is the key it answers
+  // to; it was absent only for as long as there was no button (see DESIGN.md D29).
+  Backspace: { type: 'undo' },
   '=': { type: 'equals' },
   Enter: { type: 'equals' },
   Escape: { type: 'clear' },

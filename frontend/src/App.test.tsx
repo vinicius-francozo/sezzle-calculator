@@ -151,7 +151,7 @@ describe('App', () => {
     render(<App />);
 
     await user.keyboard('4');
-    await user.keyboard('a{Backspace}(');
+    await user.keyboard('a{ArrowLeft}(');
 
     expect(screen.getByTestId('expression')).toHaveTextContent('4');
     expect(calculateMock).not.toHaveBeenCalled();
@@ -367,6 +367,29 @@ describe('App', () => {
 
     // Anchored: `12` is a substring of the `123` an undo that did nothing would leave.
     expect(screen.getByTestId('expression')).toHaveTextContent(/^12$/);
+  });
+
+  it('removes the last character of the entry on Backspace', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('1.5{Backspace}{Backspace}');
+
+    expect(screen.getByTestId('expression')).toHaveTextContent(/^1$/);
+  });
+
+  it('leaves a computed result alone, whichever way undo is pressed', async () => {
+    calculateMock.mockResolvedValue({ result: 4 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('2+2{Enter}');
+    expect(await screen.findByTestId('expression')).toHaveTextContent('4');
+
+    await user.keyboard('{Backspace}');
+    await user.click(screen.getByRole('button', { name: 'undo' }));
+
+    expect(screen.getByTestId('expression')).toHaveTextContent('4');
   });
 
   it('offers no free-text input anywhere, on desktop or mobile', () => {
