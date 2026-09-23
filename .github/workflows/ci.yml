@@ -5,8 +5,17 @@ name: CI
 
 on:
   # push covers branch work before a pull request exists; pull_request covers
-  # contributions from forks, whose pushes never reach this repository.
+  # contributions from forks, whose pushes never reach this repository. A
+  # pull request opened from a branch of this repository therefore runs twice,
+  # once per event. That is known and accepted: the alternative is a branch
+  # filter that has to be kept in step with however branches end up being named,
+  # and a duplicate run costs a few minutes of a free runner.
+  #
+  # The branch filter below is not that filter: it only keeps tag pushes from
+  # firing a workflow that has nothing to say about a tag.
   push:
+    branches:
+      - '**'
   pull_request:
 
 # Nothing here writes to the repository, publishes anything or comments on a
