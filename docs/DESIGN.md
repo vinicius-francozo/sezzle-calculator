@@ -302,7 +302,8 @@ what makes "testable architecture" true rather than claimed, and it is the bound
 looks for first.
 
 **Errors as values.** The domain exposes sentinel errors (`ErrDivisionByZero`,
-`ErrUnsupportedOperation`, `ErrInvalidOperandCount`, `ErrOverflow`) compared
+`ErrUnsupportedOperation`, `ErrInvalidOperandCount`, `ErrOverflow`, and — since `sqrt` shipped in
+S6 — a sentinel for the square root of a negative number) compared
 with `errors.Is`. Never string matching on error text.
 
 ---
@@ -540,3 +541,58 @@ same toolchain versions the containers pin, and also builds the compose stack.
 cheapest way to make that claim falsifiable by someone who has not cloned it: a reviewer opening the
 repository sees whether the suite passes on a machine that is not the author's. It also guards the
 coverage thresholds, which are only meaningful if something enforces them.
+
+---
+
+## D26 — `power`'s failures are `OVERFLOW`, and why that is the contract's fault rather than the code's
+
+**Decision.** Every way `math.Pow` fails produces a non-finite result, and all of them map to
+`OVERFLOW`: `0 ^ -1` gives `+Inf`, `(-8) ^ (1/3)` gives `NaN`. Neither becomes `DIVISION_BY_ZERO`
+nor `UNDEFINED_RESULT`.
+
+**Why.** The contract pins `DIVISION_BY_ZERO` to "`divide` with `b == 0`" and gives `UNDEFINED_RESULT`
+a row naming exactly one producer, the square root of a negative number — a wording the error
+message itself repeats. `OVERFLOW`'s row is unqualified: "result is not a finite number (`±Inf` or
+`NaN`)". With the contract frozen and the frontend built against it in parallel, this is the only
+self-consistent reading.
+
+**The cost, stated plainly.** `sqrt(-1)` and `(-8)^(1/3)` are the same class of failure — an
+operation undefined for its operands — and they get different codes and different messages. A
+reviewer is entitled to call that a wart. It is a contract-level fix, not a code-level one: the
+honest version would give `UNDEFINED_RESULT` a general message and let both route there. Recorded
+rather than smuggled.
+
+**A sharper reason the finiteness guard must exist than "never a raw NaN in a response".**
+`encoding/json` cannot encode `NaN` or `±Inf` — it returns an error — and `writeJSON` sets the
+status and calls `WriteHeader(200)` *before* encoding, then discards the encoder error. Removing
+the guard was tested: `power` of `(-8)^(1/3)` answers **`200 OK` with a zero-length body**. Not a
+visible `NaN` the client could at least detect, but a syntactically empty success the client cannot
+parse at all.
+
+---
+
+## D27 — A correction: `a% of b` and `b% of a` are not the same number
+
+An earlier note in this project's mutation log claimed that mutating `Percent` from `a / 100 * b`
+to `b / 100 * a` produced an *equivalent* mutant, on the grounds that "15% of 200 and 200% of 15 are
+the same number". That is true in ℝ and **false in `float64`**: the division and the multiplication
+round separately, so the two orders differ by an ULP for roughly a third of ordinary operand pairs
+(1,696,353 of 5,000,000 random pairs), and differ catastrophically at the extremes — with a
+subnormal second operand, one order underflows to zero while the other does not. It is observable
+in the API response:
+
+```
+{"operation":"percent","operands":[3,7]} -> "result":0.21
+{"operation":"percent","operands":[7,3]} -> "result":0.21000000000000002
+```
+
+So the mutant is genuinely killable, not equivalent. It is left alive deliberately for a different
+reason: the divergence is one ULP at ordinary magnitudes and D6's 12-significant-digit display
+formatting hides it, so no user-visible behaviour depends on it, and a test pinning ULP noise would
+be a worse test than this note.
+
+The correction is recorded rather than quietly fixed because "they are the same number" is exactly
+the kind of floating-point assertion that becomes a real defect the next time someone reasons from
+it. The implementation order itself is not arbitrary: `a / 100 * b` is what `api.md` specifies, and
+`a * b / 100` overflows to `+Inf` for large operands where `a / 100 * b` does not — which *is*
+pinned by a test.

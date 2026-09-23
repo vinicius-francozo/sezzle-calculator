@@ -134,6 +134,18 @@ curl -s localhost:8080/api/v1/calculate \
   -d '{"operation":"tangent","operands":[1]}'
 # {"error":{"code":"UNSUPPORTED_OPERATION","message":"Unsupported operation \"tangent\""}}
 
+# exponentiation
+curl -s localhost:8080/api/v1/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"power","operands":[2,10]}'
+# {"operation":"power","operands":[2,10],"result":1024}
+
+# a power whose result is not a finite number
+curl -s localhost:8080/api/v1/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"operation":"power","operands":[0,-1]}'
+# {"error":{"code":"OVERFLOW","message":"Overflow: the result could not be calculated"}}
+
 # square root — the one unary operation
 curl -s localhost:8080/api/v1/calculate \
   -H 'Content-Type: application/json' \
