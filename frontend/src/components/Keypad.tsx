@@ -36,10 +36,12 @@ const UNDO_ICON = (
 );
 
 /**
- * The keypad, in visual order: four columns by six rows, digits on the left and
- * operators down the right. That is 24 cells for 21 keys, and the single span takes
- * up the difference exactly — `=` covers the whole bottom row — so the grid has no
- * hole in it. Undo comes first because it sits in the top-left corner (DESIGN.md D29).
+ * The keypad, in visual order: four columns by six rows, digits in the three left
+ * columns and the four arithmetic operators down the right. That is 24 cells for 21
+ * keys, and the single span takes up the difference exactly — `=` covers the whole
+ * bottom row — so the grid has no hole in it. `0` gives up the two-column span it had
+ * before undo arrived, and `%` takes the cell that frees, which is why an operator
+ * sits in the bottom digit row. Undo comes first: it is the top-left key (DESIGN.md D29).
  */
 const KEYS: readonly KeyDefinition[] = [
   { label: UNDO_ICON, name: 'undo', variant: 'action', action: { type: 'undo' } },

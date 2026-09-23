@@ -190,7 +190,10 @@ function appendDecimal(state: CalculatorState): CalculatorState {
  * `overwriteEntry` already marks exactly the entries that are not the user's own text.
  */
 function removeLastCharacter(state: CalculatorState): CalculatorState {
-  if (state.overwriteEntry) {
+  // A typed `0` is already the empty entry, so undoing it changes nothing. Returning
+  // the same state, rather than an equal one, keeps this in line with every other
+  // inert path in the reducer and spares the tree a render.
+  if (state.overwriteEntry || state.entry.text === '0') {
     return state;
   }
   const text = state.entry.text.slice(0, -1);
