@@ -1,0 +1,208 @@
+# Makes the claim this repository rests on falsifiable by someone who has not
+# cloned it (DESIGN.md D25): both suites and the composed stack run on a machine
+# that is not the author's, with the toolchain versions the images pin.
+name: CI
+
+on:
+  # push covers branch work before a pull request exists; pull_request covers
+  # contributions from forks, whose pushes never reach this repository. A
+  # pull request opened from a branch of this repository therefore runs twice,
+  # once per event. That is known and accepted: the alternative is a branch
+  # filter that has to be kept in step with however branches end up being named,
+  # and a duplicate run costs a few minutes of a free runner.
+  #
+  # The branch filter below is not that filter: it only keeps tag pushes from
+  # firing a workflow that has nothing to say about a tag.
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+# Nothing here writes to the repository, publishes anything or comments on a
+# pull request, so the default read access to the code is all it gets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A newer push makes the run it interrupted irrelevant -- except on main,
+  # where each commit is a thing someone may come back to and ask whether it was
+  # green. Two pushes in quick succession would otherwise leave the first commit
+  # showing a cancelled run for good, with nothing that says it was fine.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# The three jobs are independent and run in parallel: the stack builds its own
+# images and does not wait on the unit suites.
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # The version comes out of go.mod, which is the same 1.26 that
+          # backend/Dockerfile pins as golang:1.26-alpine, so CI and the image
+          # cannot drift apart.
+          go-version-file: backend/go.mod
+          # The module depends on the standard library alone, so there is no
+          # go.sum to key the cache on. go.mod is the stable stand-in, and the
+          # cache still earns its place: setup-go stores the build cache under
+          # the same key.
+          cache-dependency-path: backend/go.mod
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would rewrite these files:"
+            echo "$unformatted"
+            # The annotation is a headline; the diff is what someone can act on
+            # without a local Go toolchain.
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      # -race because the server runs goroutines -- the HTTP server itself, and
+      # the shutdown path that races a signal against in-flight requests -- and
+      # a data race there is exactly the kind of fault that passes on one
+      # machine and fails on the runner.
+      - name: Test with coverage
+        run: go test -race ./... -coverprofile=coverage.out
+
+      # The number is the point of the run, so it goes where a reviewer sees it
+      # without unfolding a log: the job summary, and the log as well. It runs
+      # even when the suite failed, which is when the summary is most worth
+      # having: go test still writes the profile for the packages that did run,
+      # so the summary names which one lost its coverage. The guard is for a
+      # run that never got that far -- a setup step that failed before the
+      # tests started -- where there is no profile to read at all.
+      - name: Report coverage
+        if: always()
+        run: |
+          if [ ! -f coverage.out ]; then
+            echo 'No coverage profile: the tests did not get far enough to write one.' \
+              >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          report=$(go tool cover -func=coverage.out)
+          echo "$report"
+          {
+            echo '### Backend coverage'
+            echo
+            echo '```'
+            echo "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The frontend's thresholds live in vite.config.ts; Go has no equivalent,
+      # so the floor is stated here or nowhere. 97.0 is the total the suite
+      # reaches today, and it is deliberately not rounded down to leave room:
+      # both internal/ packages are at 100%, and the only uncovered statements
+      # are main()'s own wiring, which the suite skips on purpose because run()
+      # is tested in its place. There is therefore no slack to hand out, and a
+      # floor below the real number would just be a budget for losing coverage
+      # quietly. Lowering it should take an argument, which is the point.
+      - name: Enforce the coverage floor
+        run: |
+          floor=97.0
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ { print $NF }' | tr -d '%')
+          if awk -v total="$total" -v floor="$floor" 'BEGIN { exit !(total < floor) }'; then
+            echo "::error::backend coverage is ${total}%, below the floor of ${floor}%"
+            exit 1
+          fi
+          echo "backend coverage is ${total}%, at or above the floor of ${floor}%"
+
+  frontend:
+    name: Frontend (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # The major frontend/Dockerfile pins as node:22-alpine.
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      # The thresholds live in vite.config.ts, so a coverage regression fails
+      # this step on its own and CI never has to restate the numbers.
+      - name: Test with coverage
+        run: npm run coverage
+
+      # Always: the step above fails on a threshold regression, and that is the
+      # one failure a coverage summary exists to explain. The reporter writes
+      # coverage-summary.json before the thresholds are checked, so the numbers
+      # are there to read.
+      - name: Report coverage
+        if: always()
+        run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo 'No coverage summary: the tests did not get far enough to write one.' \
+              >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          summary=$(jq -r '.total | "- statements: \(.statements.pct)%",
+                                    "- branches: \(.branches.pct)%",
+                                    "- functions: \(.functions.pct)%",
+                                    "- lines: \(.lines.pct)%"' coverage/coverage-summary.json)
+          echo "$summary"
+          {
+            echo '### Frontend coverage'
+            echo
+            echo "$summary"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  stack:
+    name: Stack (Docker Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This is the job that tests D13's promise that one command is enough:
+      # --wait returns only once the backend healthcheck passes and the
+      # frontend that depends on it is up.
+      - name: Build the images and start the stack
+        run: docker compose up --build --detach --wait --wait-timeout 120
+
+      # The frontend image declares no healthcheck, so for that container --wait
+      # returns at running, which is a moment or two before nginx is listening.
+      # Nine cold starts in a row never needed this, so it is insurance against
+      # a race rather than a fix for an observed failure -- and it is kept here,
+      # out of the smoke test, so that no assertion in there is silently retried
+      # into passing.
+      - name: Wait for the proxy to accept connections
+        run: |
+          curl --silent --show-error --fail --output /dev/null \
+            --retry 3 --retry-connrefused --retry-delay 1 \
+            http://localhost:3000/
+
+      - name: Exercise the API through the proxy
+        run: ./scripts/smoke-test.sh
+
+      - name: Dump container logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear the stack down
+        if: always()
+        run: docker compose down --volumes
