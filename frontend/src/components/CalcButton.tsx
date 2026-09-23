@@ -5,7 +5,8 @@ export interface CalcButtonProps {
   /** Accessible name, for buttons whose label is a symbol. */
   readonly name?: string;
   readonly variant: ButtonVariant;
-  readonly span?: 'columns' | 'rows';
+  /** How much of the grid the key covers: two columns, or the whole bottom row. */
+  readonly span?: 'wide' | 'full';
   readonly disabled: boolean;
   readonly onPress: () => void;
 }
@@ -19,7 +20,7 @@ export function CalcButton({
   disabled,
   onPress,
 }: CalcButtonProps): React.JSX.Element {
-  const spanClass = span === undefined ? '' : ` key--span-${span}`;
+  const spanClass = span === undefined ? '' : ` key--${span}`;
   return (
     <button
       type="button"

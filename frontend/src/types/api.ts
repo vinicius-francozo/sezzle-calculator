@@ -3,8 +3,23 @@
  * Nothing here may drift from that document.
  */
 
-/** Operations the API can perform. Only the binary ones are in scope (see DESIGN.md D1). */
-export type Operation = 'add' | 'subtract' | 'multiply' | 'divide';
+/** Operations taking a left and a right operand, entered as `left op right =` (DESIGN.md D1). */
+export type BinaryOperation =
+  | 'add'
+  | 'subtract'
+  | 'multiply'
+  | 'divide'
+  | 'power'
+  | 'percent';
+
+/**
+ * Operations taking a single operand. They have no second operand to wait for, so
+ * they apply to the entry at once and need no `=` (see DESIGN.md D24).
+ */
+export type UnaryOperation = 'sqrt';
+
+/** Operations the API can perform. Arity is a property of the operation (docs/api.md). */
+export type Operation = BinaryOperation | UnaryOperation;
 
 export interface CalculateRequest {
   readonly operation: Operation;

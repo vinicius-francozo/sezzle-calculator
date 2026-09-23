@@ -74,6 +74,27 @@ describe('calculate', () => {
     expect(error.message).toBe('Division by zero is undefined');
   });
 
+  it('reports the API message for a square root that is undefined', async () => {
+    respondWith(400, {
+      error: { code: 'UNDEFINED_RESULT', message: 'Square root of a negative number is undefined' },
+    });
+
+    const error = await expectApiError(calculate({ operation: 'sqrt', operands: [-9] }));
+
+    expect(error.code).toBe('UNDEFINED_RESULT');
+    expect(error.message).toBe('Square root of a negative number is undefined');
+  });
+
+  it('posts a unary operation with the single operand its arity asks for', async () => {
+    respondWith(200, { operation: 'sqrt', operands: [9], result: 3 });
+
+    await expect(calculate({ operation: 'sqrt', operands: [9] })).resolves.toEqual({ result: 3 });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/calculate',
+      expect.objectContaining({ body: '{"operation":"sqrt","operands":[9]}' }),
+    );
+  });
+
   it('reports a request the caller gave up on as a timeout', async () => {
     vi.stubGlobal(
       'fetch',

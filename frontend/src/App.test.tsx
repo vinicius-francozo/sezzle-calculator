@@ -20,6 +20,14 @@ function deferred<T>() {
   return { promise, settle };
 }
 
+/** How many cells of the keypad grid a key covers, per the span classes in styles.css. */
+function cellsOf(key: HTMLElement): number {
+  if (key.classList.contains('key--full')) {
+    return 4;
+  }
+  return key.classList.contains('key--wide') ? 2 : 1;
+}
+
 beforeEach(() => {
   calculateMock.mockReset();
 });
@@ -201,6 +209,141 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'equals' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '7' })).toBeEnabled();
     expect(screen.getByTestId('expression')).toHaveTextContent('4');
+  });
+
+  it('raises a number to a power', async () => {
+    calculateMock.mockResolvedValue({ result: 1024 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: 'power' }));
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+    await user.click(screen.getByRole('button', { name: 'equals' }));
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'power', operands: [2, 10] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('1024');
+  });
+
+  it('takes a percentage of a number', async () => {
+    calculateMock.mockResolvedValue({ result: 30 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: 'percent' }));
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+    await user.click(screen.getByRole('button', { name: 'equals' }));
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'percent', operands: [15, 200] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('30');
+  });
+
+  it('roots the number on screen as soon as the key is pressed, with no equals', async () => {
+    calculateMock.mockResolvedValue({ result: 9 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('81');
+    await user.click(screen.getByRole('button', { name: 'square root' }));
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'sqrt', operands: [81] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('9');
+    expect(screen.getByTestId('history')).toHaveTextContent('√81 = 9');
+  });
+
+  it('roots the right-hand operand and leaves the operation waiting for equals', async () => {
+    calculateMock.mockResolvedValueOnce({ result: 3 }).mockResolvedValueOnce({ result: 5 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('2+9');
+    await user.click(screen.getByRole('button', { name: 'square root' }));
+    expect(await screen.findByTestId('expression')).toHaveTextContent('2 + 3');
+
+    await user.keyboard('{Enter}');
+
+    expect(calculateMock).toHaveBeenNthCalledWith(
+      2,
+      { operation: 'add', operands: [2, 3] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('5');
+  });
+
+  it('shows the API message for a root that is undefined and keeps the operand', async () => {
+    calculateMock
+      .mockResolvedValueOnce({ result: -9 })
+      .mockRejectedValueOnce(
+        new ApiError('UNDEFINED_RESULT', 'Square root of a negative number is undefined'),
+      );
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('0-9{Enter}');
+    expect(await screen.findByTestId('expression')).toHaveTextContent('-9');
+
+    await user.click(screen.getByRole('button', { name: 'square root' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Square root of a negative number is undefined',
+    );
+    expect(screen.getByTestId('expression')).toHaveTextContent('-9');
+    // Only the subtraction that succeeded is recorded; the failure stays inline.
+    expect(screen.getByTestId('history')).toHaveTextContent('0 − 9 = -9');
+  });
+
+  it('accepts the new operations from the keyboard too', async () => {
+    calculateMock.mockResolvedValueOnce({ result: 3 }).mockResolvedValueOnce({ result: 27 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('9@');
+    expect(await screen.findByTestId('expression')).toHaveTextContent('3');
+
+    await user.keyboard('^3{Enter}');
+
+    expect(calculateMock).toHaveBeenNthCalledWith(
+      2,
+      { operation: 'power', operands: [3, 3] },
+      expect.any(AbortSignal),
+    );
+    expect(await screen.findByTestId('expression')).toHaveTextContent('27');
+  });
+
+  it('takes a percentage from the keyboard', async () => {
+    calculateMock.mockResolvedValue({ result: 30 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('15%200{Enter}');
+
+    expect(calculateMock).toHaveBeenCalledWith(
+      { operation: 'percent', operands: [15, 200] },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it('fills its four-by-six grid exactly, leaving no empty cell', () => {
+    render(<App />);
+
+    const keys = screen.getAllByRole('button');
+
+    expect(keys).toHaveLength(20);
+    expect(keys.reduce((cells, key) => cells + cellsOf(key), 0)).toBe(24);
   });
 
   it('offers no free-text input anywhere, on desktop or mobile', () => {
