@@ -14,10 +14,13 @@ on:
 permissions:
   contents: read
 
-# A newer push makes the run it interrupted irrelevant.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push makes the run it interrupted irrelevant -- except on main,
+  # where each commit is a thing someone may come back to and ask whether it was
+  # green. Two pushes in quick succession would otherwise leave the first commit
+  # showing a cancelled run for good, with nothing that says it was fine.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # The three jobs are independent and run in parallel: the stack builds its own
 # images and does not wait on the unit suites.
