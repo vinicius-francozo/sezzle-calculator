@@ -68,10 +68,11 @@ precedence, no parentheses. Chained input resolves left to right.
 - Desktop-calculator-style UI: clickable buttons for digits and operations, a display showing the
   current expression and the result.
 - **Keyboard input is supported on desktop**: the user may type digits and operators
-  (`0-9`, `.` and `,`, `+ - * /`, `Enter`/`=`, `Escape`) instead of clicking. `,` is mapped
-  because it is the decimal separator on the numpad of ABNT2, German and French layouts. The key map covers exactly the
-  actions that exist as buttons and nothing more — there is no `Backspace`, because there is no
-  backspace button (decision D11). Parentheses are out of scope with the binary model (D1).
+  (`0-9`, `.` and `,`, `+ - * /`, `^`, `%`, `@`, `Enter`/`=`, `Escape`, `Backspace`) instead of
+  clicking. `,` is mapped because it is the decimal separator on the numpad of ABNT2, German and
+  French layouts. The key map covers exactly the actions that exist as buttons and nothing more
+  (decision D11): `Backspace` is mapped because there is an undo button for it (D29). Parentheses
+  are out of scope with the binary model (D1).
 - **Mobile**: same behaviour through buttons only — no free-text typing affordance. Layout is
   responsive; buttons must stay comfortably tappable.
 - **Accumulator**: the previous result feeds the next operation, as on a real calculator

@@ -222,9 +222,7 @@ parking it on `C` would have made the next `Enter` clear the calculator.
 stay in sync. `,` is mapped alongside `.` because it is the numpad decimal separator on ABNT2,
 German and French layouts. `Backspace` was absent for exactly as long as there was no undo button;
 when the button arrived (D29), the key followed — which is the invariant working, not an exception
-to it. With the current button set (digits, `.`, four operators, `C`, `=`) that means
-digits, operators, `Enter`/`=` and `Escape`; there is no `Backspace` because there is no backspace
-button.
+to it.
 
 ---
 
@@ -652,3 +650,21 @@ like every key except `C`.
 **Naming.** The brief calls it undo and asks for the conventional undo arrow, so that is the icon
 and the accessible name, even though the mechanism is a backspace over the entry. The label a user
 reads and the key they press agree; the narrower behaviour is documented here and in the code.
+
+### Three states this rule covers that the sentence above does not name
+
+The implementation follows the `overwriteEntry` flag literally rather than adding rules, so these
+fall out of it. They are recorded because they were found by asking, not by guessing:
+
+- **After an operator.** `12 +` leaves the typed `12` on screen with the flag set, so undo is inert.
+  Correct — that number is the accumulator now, and undo must not reach into it — but note this is
+  inertness over text the user really did type.
+- **After a failed request.** `fail` sets the flag, so after `12 ÷ 0` the `0` on screen cannot be
+  undone. Here the flag is *stricter than the reasoning behind it*: that `0` is exact typed text and
+  no rounding is involved, so the precision argument does not apply — only the flag does. It is kept
+  deliberately: D8 says the offending expression stays put, and typing a new operand already clears
+  the error, so nothing is lost. Widening it would be a change to `fail`, not to undo, and it is
+  pinned by a test either way.
+- **Undo down to zero.** Undo on a typed `0` is idempotent, and `2 + 3` undone twice gives `2 + 0`,
+  which `=` computes as `2` — a typed zero is a legitimate operand. Both follow from "it edits the
+  current entry and nothing else".
