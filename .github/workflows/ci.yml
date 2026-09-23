@@ -60,9 +60,20 @@ jobs:
         run: go test ./... -coverprofile=coverage.out
 
       # The number is the point of the run, so it goes where a reviewer sees it
-      # without unfolding a log: the job summary, and the log as well.
+      # without unfolding a log: the job summary, and the log as well. It runs
+      # even when the suite failed, which is when the summary is most worth
+      # having: go test still writes the profile for the packages that did run,
+      # so the summary names which one lost its coverage. The guard is for a
+      # run that never got that far -- a setup step that failed before the
+      # tests started -- where there is no profile to read at all.
       - name: Report coverage
+        if: always()
         run: |
+          if [ ! -f coverage.out ]; then
+            echo 'No coverage profile: the tests did not get far enough to write one.' \
+              >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           report=$(go tool cover -func=coverage.out)
           echo "$report"
           {
@@ -101,8 +112,18 @@ jobs:
       - name: Test with coverage
         run: npm run coverage
 
+      # Always: the step above fails on a threshold regression, and that is the
+      # one failure a coverage summary exists to explain. The reporter writes
+      # coverage-summary.json before the thresholds are checked, so the numbers
+      # are there to read.
       - name: Report coverage
+        if: always()
         run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo 'No coverage summary: the tests did not get far enough to write one.' \
+              >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           summary=$(jq -r '.total | "- statements: \(.statements.pct)%",
                                     "- branches: \(.branches.pct)%",
                                     "- functions: \(.functions.pct)%",
