@@ -270,6 +270,19 @@ describe('calculatorReducer', () => {
     expect(formatExpression(state)).toBe('12 ÷ 4');
   });
 
+  it('leaves equals inert after a failed binary operation, rather than re-sending it', () => {
+    const failed = run([
+      ...type('12'),
+      divide,
+      ...type('0'),
+      equals,
+      { type: 'rejected', message: 'Division by zero is undefined' },
+    ]);
+
+    // The operand that failed is no longer submittable, so `=` asks for nothing.
+    expect(run([equals], failed)).toEqual(failed);
+  });
+
   it('clears everything, history and error included', () => {
     const state = run([
       ...type('2'),
@@ -382,6 +395,39 @@ describe('calculatorReducer', () => {
     expect(state.pending).toBeNull();
     expect(state.history).toEqual(negative.history);
     expect(formatExpression(state)).toBe('-9');
+  });
+
+  it('shows the waiting operation in front of a root in flight, and records only the root', () => {
+    const rooted = run([...type('2'), add, ...type('9'), sqrt]);
+
+    expect(formatExpression(rooted)).toBe('2 + √9');
+
+    const settled = run([{ type: 'resolved', result: 3 }], rooted);
+
+    // The history records the calculation that ran, which is the root alone.
+    expect(settled.history).toEqual([{ id: 1, expression: '√9', result: '3' }]);
+    expect(formatExpression(settled)).toBe('2 + 3');
+  });
+
+  it('resolves the expression on equals after a failed square root', () => {
+    // A transient failure is enough: `NETWORK_ERROR` and `TIMEOUT` are minted client-side.
+    const failed = run([
+      ...type('2'),
+      add,
+      ...type('9'),
+      sqrt,
+      { type: 'rejected', message: 'The calculation could not be completed' },
+    ]);
+
+    // The root failed; the addition underneath was never attempted and still has its
+    // right-hand operand, so `=` computes with the operand the user typed, un-rooted.
+    expect(formatExpression(failed)).toBe('2 + 9');
+    expect(run([equals], failed).pending).toEqual({
+      operation: 'add',
+      operands: [2, 9],
+      expression: '2 + 9',
+      nextOperator: null,
+    });
   });
 
   it('ignores input while a request is in flight, except clear', () => {

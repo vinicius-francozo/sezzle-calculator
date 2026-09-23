@@ -1,7 +1,7 @@
 import { useEffect, useReducer, type Dispatch } from 'react';
 import { ApiError, calculate } from '../lib/api';
 import { SIGNIFICANT_DIGITS, formatNumber } from '../lib/format';
-import { OPERATOR_SYMBOLS } from '../lib/operations';
+import { OPERATION_ARITY, OPERATOR_SYMBOLS } from '../lib/operations';
 import type { BinaryOperation, Operation, UnaryOperation } from '../types/api';
 
 /** A calculation that succeeded, kept for the history list (see DESIGN.md D12). */
@@ -106,7 +106,7 @@ export function calculatorReducer(
     case 'resolved':
       return state.pending === null ? state : settle(state, state.pending, action.result);
     case 'rejected':
-      return state.pending === null ? state : fail(state, action.message);
+      return state.pending === null ? state : fail(state, state.pending, action.message);
     default:
       // Input is ignored while a request is in flight; `clear` always works, so
       // the calculator can never get stuck waiting.
@@ -274,7 +274,7 @@ function settle(
 
 /** Whether the pending operation is unary — arity is a property of the operation (docs/api.md). */
 function isUnary(pending: PendingOperation): boolean {
-  return pending.operands.length === 1;
+  return OPERATION_ARITY[pending.operation] === 1;
 }
 
 /**
@@ -285,25 +285,34 @@ function nextHistoryId(history: readonly HistoryEntry[]): number {
   return (history.at(-1)?.id ?? 0) + 1;
 }
 
-function fail(state: CalculatorState, message: string): CalculatorState {
+function fail(state: CalculatorState, pending: PendingOperation, message: string): CalculatorState {
   // The failed expression stays on screen; the next digit replaces the offending operand.
-  return { ...state, overwriteEntry: true, entryIsOperand: false, error: message, pending: null };
+  const failed: CalculatorState = { ...state, overwriteEntry: true, error: message, pending: null };
+  // A unary operation that failed leaves the binary one underneath untouched, right-hand
+  // operand included, so `=` still resolves it. A binary one failed on that operand
+  // itself: it stops being submittable, so `=` does not re-send the request.
+  return isUnary(pending) ? failed : { ...failed, entryIsOperand: false };
 }
 
 /** formatExpression renders the line the user is currently working on. */
 export function formatExpression(state: CalculatorState): string {
-  if (state.pending !== null) {
-    return state.pending.expression;
-  }
   if (state.operator === null || state.accumulator === null) {
-    return state.entry.text;
+    return state.pending === null ? state.entry.text : state.pending.expression;
   }
-  const left = formatNumber(state.accumulator);
-  const symbol = OPERATOR_SYMBOLS[state.operator];
+  const waiting = `${formatNumber(state.accumulator)} ${OPERATOR_SYMBOLS[state.operator]}`;
+  if (state.pending !== null) {
+    // A binary request is already the whole expression. A unary one is only the
+    // right-hand operand being rooted, so the operation waiting on it goes in front:
+    // `2 + √9`, never a bare `√9` that hides what the user was in the middle of.
+    // It stays out of `PendingOperation.expression`, which the history records: the
+    // calculation that ran, and that the result belongs to, is the root alone.
+    const { expression } = state.pending;
+    return isUnary(state.pending) ? `${waiting} ${expression}` : expression;
+  }
   // The right-hand operand is shown once it exists — typed, or settled by a unary
   // operation — and is kept on screen when it made the calculation fail.
   const showsEntry = state.entryIsOperand || state.error !== null;
-  return showsEntry ? `${left} ${symbol} ${state.entry.text}` : `${left} ${symbol}`;
+  return showsEntry ? `${waiting} ${state.entry.text}` : waiting;
 }
 
 export interface Calculator {
