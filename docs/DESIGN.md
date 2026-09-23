@@ -596,3 +596,30 @@ the kind of floating-point assertion that becomes a real defect the next time so
 it. The implementation order itself is not arbitrary: `a / 100 * b` is what `api.md` specifies, and
 `a * b / 100` overflows to `+Inf` for large operands where `a / 100 * b` does not — which *is*
 pinned by a test.
+
+---
+
+## D28 — Two things S6 exposed in code that had already shipped
+
+**The layout container was the wrong element, and five reviews missed it.** `body` was the flex
+container, but its flex *item* was `<div id="root">`, which has no width of its own and so
+shrink-to-fits to `max-content`. `.calculator`'s `width: 100%` therefore resolved against ~159 px
+instead of its 420 px cap: on a 390 px phone the app rendered 159 px wide with 34 × 60 px keys,
+well under the 44 px tap target §2.2 requires. The fix moves the centring onto `#root`.
+
+*Why it survived so long is the useful part.* Two earlier reviews did open a real browser against
+the real stack and reported "17 buttons, no text input, no horizontal overflow at 390 px" — all
+true. They asserted the **absence of error**; the requirement was **adequacy**. Nothing overflowed
+because the layout was too small to overflow. The defect only surfaced when someone measured
+`getBoundingClientRect` on every key at five widths instead of looking. The measured numbers are
+now the standard for any UI claim in this project.
+
+**An overloaded flag came apart under a new case.** `overwriteEntry` had been answering two
+questions at once — "does the next digit start fresh?" and "is there a right-hand operand yet?" —
+which coincided for every binary operation, so the overload was invisible. A unary operation needs
+the answers to differ: its result must be overwritten by the next digit *and* usable by `=`. Hence
+`entryIsOperand`. The same split then exposed a second bug: `fail` cleared the operand flag
+unconditionally, which is right for a failed binary request but strands a failed unary — the user
+would be looking at `2 + 9` with `=` silently inert, because the binary operation underneath had
+never been attempted. `fail` now branches on arity, mirroring `settle`, and both branches are
+pinned by a test that fails without them.

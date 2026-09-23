@@ -1,5 +1,7 @@
 # Calculator — React + Go
 
+[![CI](https://github.com/vinicius-francozo/sezzle-calculator/actions/workflows/ci.yml/badge.svg)](https://github.com/vinicius-francozo/sezzle-calculator/actions/workflows/ci.yml)
+
 A full-stack calculator: a React (TypeScript) frontend consuming a Go REST microservice that
 performs the arithmetic. Built as a technical assessment, with the emphasis on clean, readable and
 idiomatic code, meaningful tests and honest documentation rather than on feature count.
@@ -73,7 +75,12 @@ curl -s localhost:8080/api/v1/calculate \
 # {"operation":"divide","operands":[12,4],"result":3}
 ```
 
-Operations: `add`, `subtract`, `multiply`, `divide` — each taking two operands.
+| Operation | Operands | Meaning |
+| --- | --- | --- |
+| `add` `subtract` `multiply` `divide` | 2 | the four basics |
+| `power` | 2 | `a ^ b` |
+| `percent` | 2 | `a% of b` — `15 % 200 =` is `30` |
+| `sqrt` | 1 | `√a` — the one unary operation |
 
 Every error, without exception, uses one envelope with a stable machine code and a message safe to
 show to a user:
@@ -89,6 +96,7 @@ curl -s -i localhost:3000/api/v1/calculate \
 | Situation | Status | Code |
 | --- | --- | --- |
 | Division by zero | 400 | `DIVISION_BY_ZERO` |
+| Square root of a negative number | 400 | `UNDEFINED_RESULT` |
 | Result is not a finite number | 400 | `OVERFLOW` |
 | Missing field, wrong operand type or count | 400 | `VALIDATION_ERROR` |
 | Operation not supported | 400 | `UNSUPPORTED_OPERATION` |
@@ -107,15 +115,20 @@ the container healthcheck.
 
 ```bash
 ./scripts/coverage.sh          # both suites, in containers, no local toolchain
+./scripts/smoke-test.sh        # exercises the running stack through the proxy
 ```
+
+`smoke-test.sh` checks the contract end to end against whatever is running — it takes a
+`BASE_URL` override and defaults to `http://localhost:3000`. CI runs the same script, so the
+check a reviewer runs by hand is the check that gates the build.
 
 Committed reports: [`docs/coverage/backend.txt`](docs/coverage/backend.txt) ·
 [`docs/coverage/frontend.txt`](docs/coverage/frontend.txt)
 
 | Layer | Result | Coverage |
 | --- | --- | --- |
-| Backend | `go test ./...` green | **97.0%** of statements — `internal/calculator` and `internal/httpapi` both **100%**; the remainder is `main()` |
-| Frontend | 107 tests green | **100%** statements, functions and lines; **99.14%** branches |
+| Backend | `go test ./...` green, race detector clean | **97.2%** of statements — `internal/calculator` and `internal/httpapi` both **100%**; the remainder is `main()` |
+| Frontend | 135 tests green | **100%** statements, functions and lines; **99.21%** branches |
 
 Natively, if you have the toolchains:
 
@@ -125,7 +138,7 @@ cd frontend && npm run coverage
 ```
 
 The one uncovered frontend branch is a `null` guard on a ref that TypeScript requires and the
-runtime cannot reach; a non-null assertion would have bought the last 0.86% by suppressing the
+runtime cannot reach; a non-null assertion would have bought the last 0.79% by suppressing the
 type-checker, which the project's own rules forbid. The threshold is set at 98% with that margin
 documented, rather than at a round number that hides a regression budget.
 
@@ -190,8 +203,9 @@ backend image is 9.5 MB.
 - **History is per-session and in-memory** — last 10 successful calculations, no persistence, no
   history endpoint.
 - **The keyboard maps exactly the actions that exist as buttons** (`0-9 . + - * /`, `Enter`/`=`,
-  `Escape`, and `,` as an alias for `.` since that is the numpad separator on ABNT2, German and
-  French layouts). There is no `Backspace` because there is no backspace button; `C` clears. On mobile
+  `Escape`, `^` for power, `%` for percent, `@` for square root as the Windows calculator binds it,
+  and `,` as an alias for `.` since that is the numpad separator on ABNT2, German and French
+  layouts). There is no `Backspace` because there is no backspace button; `C` clears. On mobile
   there is no text input anywhere, so the on-screen keyboard is never summoned.
 - **CORS is permissive on the backend.** It is irrelevant in the composed stack, where everything is
   same-origin, and exists for whoever runs the two layers natively on different ports.
@@ -206,9 +220,12 @@ mandatory scope was complete.
 - If the 10-second timeout fires while the response body is still streaming, the user sees the
   generic unexpected-response message instead of the timeout one. Narrow race; both are readable.
 - The history auto-scrolls to the newest entry even if the user had scrolled up to read an older one.
-- Exponentiation, square root and percentage are specified in the contract and left in the backlog
-  (see [`docs/PLAN.md`](docs/PLAN.md) S6). The domain registry is the single extension point:
-  adding one is a pure function, a registry row and a test table.
+- `sqrt(-1)` and `(-8)^(1/3)` are the same class of failure — an operation undefined for its
+  operands — but the contract gives them different codes (`UNDEFINED_RESULT` and `OVERFLOW`),
+  because the `UNDEFINED_RESULT` row names exactly one producer. A contract-level fix, recorded in
+  [`docs/DESIGN.md`](docs/DESIGN.md) D26 rather than smuggled.
+- `^` is a dead key on ABNT2, German and French layouts and `@` needs AltGr on German and French,
+  so those two keyboard shortcuts degrade to button-only there.
 
 ---
 
@@ -238,8 +255,16 @@ compose.yaml
 The assessment invites the use of AI tooling and asks for the prompts. All of them are in
 [`prompts/`](prompts/), including the verbatim briefs given to each agent.
 
-The work ran as three parallel tracks — backend, frontend, containers — each in its own git
-worktree and branch with a disjoint file scope, and each merged only after passing a code review by
-a *different* agent that ran the suite, mutated the source and checked the result against the
-frozen contract. Findings went to a third agent scoped strictly to fixing them, then back to review.
-Two tracks needed two rounds, one needed three. The merge history keeps each track as a unit.
+The work ran as parallel tracks — backend, frontend and containers first, then the optional
+operations and CI — each in its own git worktree and branch with a disjoint file scope, and each
+merged only after passing a code review by a *different* agent that ran the suite, mutated the
+source and checked the result against the frozen contract. Findings went to a third agent scoped
+strictly to fixing them, then back to review. The merge history keeps each track as a unit.
+
+Reviews were not rubber stamps. They caught an arithmetic bug where chaining from the rounded
+display made `1 ÷ 3 × 3` give `0.999999999999`; a panic-recovery middleware that could be deleted
+from the chain with the suite still green; a fix that was pinned on only one of its two code paths;
+a coverage report that would have been committed full of ANSI escapes; and a layout defect that had
+survived five reviews because everyone had checked for *absence of error* — no overflow, nothing
+clipped — when the requirement was *adequacy*: the calculator was rendering 159 px wide with 34 px
+keys on a phone. Two findings were rejected with evidence instead of implemented.

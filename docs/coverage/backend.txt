@@ -1,28 +1,32 @@
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server	0.017s	coverage: 81.8% of statements
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator	0.004s	coverage: 100.0% of statements
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi	0.005s	coverage: 100.0% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server	0.021s	coverage: 81.8% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator	0.008s	coverage: 100.0% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi	0.020s	coverage: 100.0% of statements
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:25:			main				0.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:38:			run				100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:73:			listenAddress			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:21:	Add				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:24:	Subtract			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:27:	Multiply			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:34:	Divide				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:27:	Error				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:31:	Unwrap				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:41:	Error				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:45:	Unwrap				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/evaluate.go:30:	Evaluate			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:26:	Add				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:29:	Subtract			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:32:	Multiply			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:39:	Divide				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:52:	Power				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:59:	Sqrt				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/calculator.go:71:	Percent				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:35:	Error				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:39:	Unwrap				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:49:	Error				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:57:	Requirement			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/errors.go:64:	Unwrap				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator/evaluate.go:33:	Evaluate			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/calculate.go:32:	handleCalculate			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/calculate.go:54:	decodeCalculateRequest		100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/calculate.go:79:	validateCalculateRequest	100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/calculate.go:100:	decodeError			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:43:		Error				100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:46:		newAPIError			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:53:		describeError			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:82:		errInternal			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:87:		writeError			100.0%
-github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:92:		writeJSON			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:60:		Error				100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:63:		newAPIError			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:70:		describeError			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:106:		errInternal			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:111:		writeError			100.0%
+github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/errors.go:116:		writeJSON			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/middleware.go:13:	Recover				100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/middleware.go:35:	RequestLog			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/middleware.go:54:	CORS				100.0%
@@ -33,4 +37,4 @@ github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/router.g
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/router.go:54:		handleHealth			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/router.go:58:		handleNotFound			100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi/router.go:65:		methodNotAllowed		100.0%
-total:												(statements)			97.0%
+total:												(statements)			97.2%
