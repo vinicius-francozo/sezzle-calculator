@@ -128,7 +128,7 @@ Committed reports: [`docs/coverage/backend.txt`](docs/coverage/backend.txt) ·
 | Layer | Result | Coverage |
 | --- | --- | --- |
 | Backend | `go test ./...` green, race detector clean | **97.2%** of statements — `internal/calculator` and `internal/httpapi` both **100%**; the remainder is `main()` |
-| Frontend | 135 tests green | **100%** statements, functions and lines; **99.21%** branches |
+| Frontend | 149 tests green | **100%** statements, functions and lines; **99.24%** branches |
 
 Natively, if you have the toolchains:
 
@@ -138,7 +138,7 @@ cd frontend && npm run coverage
 ```
 
 The one uncovered frontend branch is a `null` guard on a ref that TypeScript requires and the
-runtime cannot reach; a non-null assertion would have bought the last 0.79% by suppressing the
+runtime cannot reach; a non-null assertion would have bought the last 0.76% by suppressing the
 type-checker, which the project's own rules forbid. The threshold is set at 98% with that margin
 documented, rather than at a round number that hides a regression budget.
 

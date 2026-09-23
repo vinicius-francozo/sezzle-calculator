@@ -1,6 +1,6 @@
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server	0.021s	coverage: 81.8% of statements
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator	0.008s	coverage: 100.0% of statements
-ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi	0.020s	coverage: 100.0% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server	0.024s	coverage: 81.8% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/calculator	0.012s	coverage: 100.0% of statements
+ok  	github.com/vinicius-francozo/sezzle-calculator/backend/internal/httpapi	0.022s	coverage: 100.0% of statements
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:25:			main				0.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:38:			run				100.0%
 github.com/vinicius-francozo/sezzle-calculator/backend/cmd/server/main.go:73:			listenAddress			100.0%
