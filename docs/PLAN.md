@@ -95,7 +95,8 @@ needed.
    table each in Go, plus the matching buttons and reducer actions in the UI. Cheap by construction
    (see `DESIGN.md` D2/D4), but it stays out of the mandatory scope until S5 is done.
 2. GitHub Actions workflow running both test suites and publishing coverage on every push.
-3. Server-side expression parser as an additive `POST /api/v1/evaluate`, enabling precedence and
+3. An undo key removing the last typed character, with a button and `Backspace` mapped to it (D29).
+4. Server-side expression parser as an additive `POST /api/v1/evaluate`, enabling precedence and
    parentheses (`DESIGN.md` D1).
 
 Nothing here starts before S5 is complete. An unfinished extra is worse than an absent one.

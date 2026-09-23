@@ -220,7 +220,9 @@ parking it on `C` would have made the next `Enter` clear the calculator.
 
 **Scope note.** The key map only covers actions that exist as buttons, so button set and keyboard
 stay in sync. `,` is mapped alongside `.` because it is the numpad decimal separator on ABNT2,
-German and French layouts. With the current button set (digits, `.`, four operators, `C`, `=`) that means
+German and French layouts. `Backspace` was absent for exactly as long as there was no undo button;
+when the button arrived (D29), the key followed — which is the invariant working, not an exception
+to it. With the current button set (digits, `.`, four operators, `C`, `=`) that means
 digits, operators, `Enter`/`=` and `Escape`; there is no `Backspace` because there is no backspace
 button.
 
@@ -623,3 +625,30 @@ unconditionally, which is right for a failed binary request but strands a failed
 would be looking at `2 + 9` with `=` silently inert, because the binary operation underneath had
 never been attempted. `fail` now branches on arity, mirroring `settle`, and both branches are
 pinned by a test that fails without them.
+
+---
+
+## D29 — Undo, and the one rule that keeps it from reintroducing the precision bug
+
+**Decision.** An undo key removes the last character of the entry, with a button in the top-left of
+the keypad and `Backspace` mapped to the same action, per D11's button/keyboard parity.
+
+**It only edits an entry the user typed.** When the display holds a *computed* result — after `=`,
+after a square root, or on a fresh calculator — undo does nothing.
+
+**Why that restriction is not arbitrary.** A result is displayed rounded to 12 significant digits
+while `Entry` carries the exact value behind it (D22). Letting undo edit that text would make the
+next operand come from the rounded string, which is precisely the defect D22 was written to close:
+`1 ÷ 3 =` then editing the display would chain from `0.333333333333` rather than `1/3`. Rather than
+add a rule about when the pair may diverge, undo simply does not apply where the pair exists. The
+existing `overwriteEntry` flag already marks exactly that state, so the guard costs nothing new.
+
+**Edge cases.** Deleting the last character leaves `0`, still typed, so the next digit replaces it
+rather than appending to it. `1.5` → `1.` → `1` → `0`. Undo never touches the accumulator, the
+pending operator or the history — it is an edit of the current entry and nothing else, so it cannot
+resurrect a cleared calculation or undo a settled one. While a request is in flight it is inert,
+like every key except `C`.
+
+**Naming.** The brief calls it undo and asks for the conventional undo arrow, so that is the icon
+and the accessible name, even though the mechanism is a backspace over the entry. The label a user
+reads and the key they press agree; the narrower behaviour is documented here and in the code.
