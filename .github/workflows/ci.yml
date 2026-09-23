@@ -84,6 +84,24 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The frontend's thresholds live in vite.config.ts; Go has no equivalent,
+      # so the floor is stated here or nowhere. 97.0 is the total the suite
+      # reaches today, and it is deliberately not rounded down to leave room:
+      # both internal/ packages are at 100%, and the only uncovered statements
+      # are main()'s own wiring, which the suite skips on purpose because run()
+      # is tested in its place. There is therefore no slack to hand out, and a
+      # floor below the real number would just be a budget for losing coverage
+      # quietly. Lowering it should take an argument, which is the point.
+      - name: Enforce the coverage floor
+        run: |
+          floor=97.0
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ { print $NF }' | tr -d '%')
+          if awk -v total="$total" -v floor="$floor" 'BEGIN { exit !(total < floor) }'; then
+            echo "::error::backend coverage is ${total}%, below the floor of ${floor}%"
+            exit 1
+          fi
+          echo "backend coverage is ${total}%, at or above the floor of ${floor}%"
+
   frontend:
     name: Frontend (Node)
     runs-on: ubuntu-latest
