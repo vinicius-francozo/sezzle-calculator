@@ -5,7 +5,7 @@
 # docs/api.md, so a drift between the two layers fails here.
 #
 #   docker compose up --build --detach --wait
-#   ./.github/scripts/smoke-test.sh
+#   ./scripts/smoke-test.sh
 #
 # BASE_URL overrides the default stack address.
 set -eu

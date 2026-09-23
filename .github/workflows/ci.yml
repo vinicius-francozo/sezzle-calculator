@@ -127,7 +127,7 @@ jobs:
         run: docker compose up --build --detach --wait --wait-timeout 120
 
       - name: Exercise the API through the proxy
-        run: ./.github/scripts/smoke-test.sh
+        run: ./scripts/smoke-test.sh
 
       - name: Dump container logs
         if: failure()
