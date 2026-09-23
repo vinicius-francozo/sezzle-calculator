@@ -23,6 +23,22 @@ const (
 	codeInternalError        = "INTERNAL_ERROR"
 )
 
+// errorCodes is the whole set of codes above, in the order docs/api.md lists
+// them. It exists so the suite can check the set and not only each spelling:
+// a code added to the contract and to this list but left unpinned fails
+// TestErrorCodesMatchTheContract instead of passing unnoticed.
+var errorCodes = []string{
+	codeInvalidJSON,
+	codeValidationError,
+	codeUnsupportedOperation,
+	codeDivisionByZero,
+	codeUndefinedResult,
+	codeOverflow,
+	codeNotFound,
+	codeMethodNotAllowed,
+	codeInternalError,
+}
+
 // errorEnvelope is the body of every non-2xx response.
 type errorEnvelope struct {
 	Error errorBody `json:"error"`
@@ -66,12 +82,14 @@ func describeError(err error) *apiError {
 			fmt.Sprintf("Unsupported operation %q", unsupported.Operation))
 	case errors.As(err, &count):
 		return newAPIError(http.StatusBadRequest, codeValidationError,
-			fmt.Sprintf("Operation %q requires %d operands, got %d", count.Operation, count.Want, count.Got))
+			fmt.Sprintf("Operation %q requires %s, got %d", count.Operation, count.Requirement(), count.Got))
 	case errors.Is(err, calculator.ErrDivisionByZero):
 		return newAPIError(http.StatusBadRequest, codeDivisionByZero, "Division by zero is undefined")
-	case errors.Is(err, calculator.ErrUndefinedResult):
-		// The sentinel is general, but sqrt of a negative number is its only
-		// producer, so the message names it instead of staying vague.
+	case errors.Is(err, calculator.ErrNegativeSqrt):
+		// The sentinel names the operation it comes from, so this message can
+		// name it too. An operation whose result is undefined for another
+		// reason carries its own sentinel and needs its own case here; the
+		// code below it stays UNDEFINED_RESULT, which the contract freezes.
 		return newAPIError(http.StatusBadRequest, codeUndefinedResult,
 			"Square root of a negative number is undefined")
 	case errors.Is(err, calculator.ErrOverflow):

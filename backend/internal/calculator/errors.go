@@ -10,9 +10,14 @@ import (
 var (
 	// ErrDivisionByZero is returned when a division has a zero divisor.
 	ErrDivisionByZero = errors.New("division by zero")
-	// ErrUndefinedResult is returned when an operation has no result for the
-	// operands it was given, such as the square root of a negative number.
-	ErrUndefinedResult = errors.New("undefined result")
+	// ErrNegativeSqrt is returned for the square root of a negative number,
+	// which has no real result. The sentinel names its one operation on
+	// purpose: the transport answers it with a message about square roots, so
+	// another operation with no result for its operands — log, asin, acos —
+	// must define a sentinel of its own rather than reuse this one. Until it
+	// has a case in describeError, an unmapped sentinel is caught by the
+	// catch-all there; a shared one would silently borrow this message.
+	ErrNegativeSqrt = errors.New("square root of a negative number is undefined")
 	// ErrUnsupportedOperation is returned for an operation the registry does not know.
 	ErrUnsupportedOperation = errors.New("unsupported operation")
 	// ErrInvalidOperandCount is returned when the operand count does not match the arity.
@@ -42,7 +47,18 @@ type OperandCountError struct {
 }
 
 func (e *OperandCountError) Error() string {
-	return fmt.Sprintf("operation %q requires %d operands, got %d", e.Operation, e.Want, e.Got)
+	return fmt.Sprintf("operation %q requires %s, got %d", e.Operation, e.Requirement(), e.Got)
+}
+
+// Requirement describes the arity in words that agree in number, so that a
+// unary operation reads "requires 1 operand" and not "requires 1 operands".
+// The transport builds its own sentence around the same phrase, which is why
+// it lives with the count instead of being spelled out in both layers.
+func (e *OperandCountError) Requirement() string {
+	if e.Want == 1 {
+		return "1 operand"
+	}
+	return fmt.Sprintf("%d operands", e.Want)
 }
 
 func (e *OperandCountError) Unwrap() error { return ErrInvalidOperandCount }

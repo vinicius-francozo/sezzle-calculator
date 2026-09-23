@@ -58,7 +58,7 @@ func TestEvaluateErrors(t *testing.T) {
 		{name: "division by zero", op: calculator.OpDivide, operands: []float64{12, 0}, wantErr: calculator.ErrDivisionByZero},
 		{name: "overflow to infinity", op: calculator.OpMultiply, operands: []float64{1e308, 10}, wantErr: calculator.ErrOverflow},
 		{name: "overflow by addition", op: calculator.OpAdd, operands: []float64{1.7e308, 1.7e308}, wantErr: calculator.ErrOverflow},
-		{name: "square root of a negative number", op: calculator.OpSqrt, operands: []float64{-9}, wantErr: calculator.ErrUndefinedResult},
+		{name: "square root of a negative number", op: calculator.OpSqrt, operands: []float64{-9}, wantErr: calculator.ErrNegativeSqrt},
 		{name: "power overflowing to infinity", op: calculator.OpPower, operands: []float64{10, 400}, wantErr: calculator.ErrOverflow},
 		// Zero to a negative power is +Inf and a negative base raised to a
 		// fractional exponent is NaN. The contract answers both with OVERFLOW,
@@ -108,6 +108,10 @@ func TestEvaluateErrorDetails(t *testing.T) {
 		}
 		if count.Operation != calculator.OpSqrt || count.Want != 1 || count.Got != 2 {
 			t.Errorf("got %+v, want {Operation:sqrt Want:1 Got:2}", *count)
+		}
+		// The only arity that can disagree in number with a plural noun.
+		if want := `operation "sqrt" requires 1 operand, got 2`; count.Error() != want {
+			t.Errorf("Error() = %q, want %q", count.Error(), want)
 		}
 	})
 

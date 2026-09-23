@@ -137,9 +137,11 @@ func TestSqrt(t *testing.T) {
 		{name: "irrational result", a: 2, want: math.Sqrt2},
 		{name: "fraction", a: 0.25, want: 0.5},
 		{name: "zero", a: 0, want: 0},
+		// sqrt(MaxFloat64), about 1.34e154: the largest finite result Sqrt
+		// can return, since squaring anything larger leaves float64.
 		{name: "largest float64", a: math.MaxFloat64, want: 1.3407807929942596e+154},
-		{name: "negative operand", a: -9, wantErr: calculator.ErrUndefinedResult},
-		{name: "negative fraction", a: -0.25, wantErr: calculator.ErrUndefinedResult},
+		{name: "negative operand", a: -9, wantErr: calculator.ErrNegativeSqrt},
+		{name: "negative fraction", a: -0.25, wantErr: calculator.ErrNegativeSqrt},
 	}
 
 	for _, test := range tests {
@@ -197,8 +199,8 @@ func TestPercent(t *testing.T) {
 // The percentage is taken before the multiplication, not after: a * b would
 // overflow here, while 2% of 1e308 is perfectly representable.
 func TestPercentDividesBeforeMultiplying(t *testing.T) {
-	if got := calculator.Percent(1e308, 2); got != 2e306 {
-		t.Errorf("Percent(1e308, 2) = %v, want %v", got, 2e306)
+	if got := calculator.Percent(2, 1e308); got != 2e306 {
+		t.Errorf("Percent(2, 1e308) = %v, want %v", got, 2e306)
 	}
 }
 

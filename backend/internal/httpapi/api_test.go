@@ -238,7 +238,7 @@ func TestErrorCatalogue(t *testing.T) {
 			body:        `{"operation":"sqrt","operands":[9,1]}`,
 			wantStatus:  http.StatusBadRequest,
 			wantCode:    codeValidationError,
-			wantMessage: `Operation "sqrt" requires 1 operands, got 2`,
+			wantMessage: `Operation "sqrt" requires 1 operand, got 2`,
 		},
 		{
 			name:        "unsupported operation",

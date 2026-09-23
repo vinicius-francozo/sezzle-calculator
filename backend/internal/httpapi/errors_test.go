@@ -43,7 +43,8 @@ func TestDescribeErrorKeepsTransportErrors(t *testing.T) {
 // them, so a typo in one is a broken client rather than a reworded message.
 // Everywhere else in the suite a response is compared against the constant
 // itself, which pins the mapping but not the spelling; this is the one place
-// that reads docs/api.md back.
+// that transcribes the literal strings of the contract, so that changing what
+// a constant holds has to be a deliberate edit here as well.
 func TestErrorCodesMatchTheContract(t *testing.T) {
 	tests := []struct {
 		got  string
@@ -60,11 +61,23 @@ func TestErrorCodesMatchTheContract(t *testing.T) {
 		{codeInternalError, "INTERNAL_ERROR"},
 	}
 
+	pinned := make(map[string]bool, len(tests))
 	for _, test := range tests {
+		pinned[test.got] = true
 		t.Run(test.want, func(t *testing.T) {
 			if test.got != test.want {
 				t.Errorf("code = %q, want %q", test.got, test.want)
 			}
 		})
+	}
+
+	// The rows pin the spelling of the codes they name, and nothing else: a
+	// code added to the contract later would simply have no row. Walking
+	// errorCodes, the declared set, closes that — every code has to be
+	// transcribed here before the suite is green again.
+	for _, code := range errorCodes {
+		if !pinned[code] {
+			t.Errorf("code %q has no row in this table: every code must be transcribed from the contract", code)
+		}
 	}
 }

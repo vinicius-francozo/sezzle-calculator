@@ -51,14 +51,14 @@ func Divide(a, b float64) (float64, error) {
 // Evaluate rather than by every operation that can produce them.
 func Power(a, b float64) float64 { return math.Pow(a, b) }
 
-// Sqrt returns the square root of a, or ErrUndefinedResult when a is negative.
+// Sqrt returns the square root of a, or ErrNegativeSqrt when a is negative.
 //
 // Negativity is a rule the square root owns, so it is checked here, the way
 // Divide owns its zero divisor. Negative zero is not negative, and IEEE 754
 // defines its square root as itself, so it is answered rather than rejected.
 func Sqrt(a float64) (float64, error) {
 	if a < 0 {
-		return 0, ErrUndefinedResult
+		return 0, ErrNegativeSqrt
 	}
 	return math.Sqrt(a), nil
 }
