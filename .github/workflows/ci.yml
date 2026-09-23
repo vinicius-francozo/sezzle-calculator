@@ -56,8 +56,12 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # -race because the server runs goroutines -- the HTTP server itself, and
+      # the shutdown path that races a signal against in-flight requests -- and
+      # a data race there is exactly the kind of fault that passes on one
+      # machine and fails on the runner.
       - name: Test with coverage
-        run: go test ./... -coverprofile=coverage.out
+        run: go test -race ./... -coverprofile=coverage.out
 
       # The number is the point of the run, so it goes where a reviewer sees it
       # without unfolding a log: the job summary, and the log as well. It runs
