@@ -31,6 +31,7 @@ describe('actionForKey', () => {
     ['^', { type: 'operator', operator: 'power' }],
     ['%', { type: 'operator', operator: 'percent' }],
     ['@', { type: 'unary', operation: 'sqrt' }],
+    ['Backspace', { type: 'undo' }],
     ['.', { type: 'decimal' }],
     [',', { type: 'decimal' }],
     ['=', { type: 'equals' }],
@@ -40,7 +41,7 @@ describe('actionForKey', () => {
     expect(actionForKey(key)).toEqual(action);
   });
 
-  it.each(['a', 'Backspace', 'ArrowLeft', ' ', '('])('ignores the unmapped key %p', (key) => {
+  it.each(['a', 'ArrowLeft', ' ', '('])('ignores the unmapped key %p', (key) => {
     expect(actionForKey(key)).toBeNull();
   });
 });
@@ -104,7 +105,7 @@ describe('useKeyboard', () => {
     const dispatch = vi.fn();
     renderHook(() => useKeyboard(dispatch));
 
-    const event = press('Backspace');
+    const event = press('ArrowLeft');
 
     expect(dispatch).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);

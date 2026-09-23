@@ -54,6 +54,7 @@ export interface CalculatorState {
 export type CalculatorAction =
   | { type: 'digit'; digit: string }
   | { type: 'decimal' }
+  | { type: 'undo' }
   | { type: 'operator'; operator: BinaryOperation }
   | { type: 'unary'; operation: UnaryOperation }
   | { type: 'equals' }
@@ -120,6 +121,8 @@ function applyInput(state: CalculatorState, action: InputAction): CalculatorStat
       return appendDigit(state, action.digit);
     case 'decimal':
       return appendDecimal(state);
+    case 'undo':
+      return removeLastCharacter(state);
     case 'operator':
       return applyOperator(state, action.operator);
     case 'unary':
@@ -177,6 +180,26 @@ function appendDecimal(state: CalculatorState): CalculatorState {
     return state;
   }
   return withTypedEntry(state, `${state.entry.text}.`);
+}
+
+/**
+ * removeLastCharacter is undo: it shortens the entry the user is typing, and leaves
+ * a computed result alone. A result is shown rounded to {@link SIGNIFICANT_DIGITS}
+ * while `Entry.value` keeps the number behind it, so editing its text would make the
+ * next operand the rounded one — the defect `Entry` exists to prevent (DESIGN.md D29).
+ * `overwriteEntry` already marks exactly the entries that are not the user's own text.
+ */
+function removeLastCharacter(state: CalculatorState): CalculatorState {
+  // A typed `0` is already the empty entry, so undoing it changes nothing. Returning
+  // the same state, rather than an equal one, keeps this in line with every other
+  // inert path in the reducer and spares the tree a render.
+  if (state.overwriteEntry || state.entry.text === '0') {
+    return state;
+  }
+  const text = state.entry.text.slice(0, -1);
+  // An emptied entry reads `0`, and is still typed text, so the next digit replaces
+  // it instead of appending to it: `1` undone then `7` is `7`, never `07`.
+  return withTypedEntry(state, text === '' ? '0' : text);
 }
 
 function applyOperator(state: CalculatorState, operator: BinaryOperation): CalculatorState {

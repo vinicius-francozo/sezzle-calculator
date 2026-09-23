@@ -20,12 +20,9 @@ function deferred<T>() {
   return { promise, settle };
 }
 
-/** How many cells of the keypad grid a key covers, per the span classes in styles.css. */
+/** How many cells of the keypad grid a key covers, per the span class in styles.css. */
 function cellsOf(key: HTMLElement): number {
-  if (key.classList.contains('key--full')) {
-    return 4;
-  }
-  return key.classList.contains('key--wide') ? 2 : 1;
+  return key.classList.contains('key--full') ? 4 : 1;
 }
 
 beforeEach(() => {
@@ -154,7 +151,7 @@ describe('App', () => {
     render(<App />);
 
     await user.keyboard('4');
-    await user.keyboard('a{Backspace}(');
+    await user.keyboard('a{ArrowLeft}(');
 
     expect(screen.getByTestId('expression')).toHaveTextContent('4');
     expect(calculateMock).not.toHaveBeenCalled();
@@ -199,6 +196,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'equals' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '7' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'decimal point' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'undo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'add' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'clear' })).toBeEnabled();
 
@@ -342,8 +340,56 @@ describe('App', () => {
 
     const keys = screen.getAllByRole('button');
 
-    expect(keys).toHaveLength(20);
+    expect(keys).toHaveLength(21);
     expect(keys.reduce((cells, key) => cells + cellsOf(key), 0)).toBe(24);
+  });
+
+  it('gives the top-left key an undo arrow and the accessible name the brief uses', () => {
+    render(<App />);
+
+    const undoKey = screen.getByRole('button', { name: 'undo' });
+
+    // The grid places the keys in source order, so the first one is the top-left cell.
+    expect(screen.getByRole('group', { name: 'Keypad' }).firstElementChild).toBe(undoKey);
+    // The face of the key is the arrow alone: no character stands for undo.
+    expect(undoKey.textContent).toBe('');
+    expect(undoKey.querySelector('svg')).not.toBeNull();
+  });
+
+  it('removes the last character of the entry when undo is clicked', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+    await user.click(screen.getByRole('button', { name: 'undo' }));
+
+    // Anchored: `12` is a substring of the `123` an undo that did nothing would leave.
+    expect(screen.getByTestId('expression')).toHaveTextContent(/^12$/);
+  });
+
+  it('removes the last character of the entry on Backspace', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('1.5{Backspace}{Backspace}');
+
+    expect(screen.getByTestId('expression')).toHaveTextContent(/^1$/);
+  });
+
+  it('leaves a computed result alone, whichever way undo is pressed', async () => {
+    calculateMock.mockResolvedValue({ result: 4 });
+    const user = userEvent.setup({ delay: null });
+    render(<App />);
+
+    await user.keyboard('2+2{Enter}');
+    expect(await screen.findByTestId('expression')).toHaveTextContent('4');
+
+    await user.keyboard('{Backspace}');
+    await user.click(screen.getByRole('button', { name: 'undo' }));
+
+    expect(screen.getByTestId('expression')).toHaveTextContent('4');
   });
 
   it('offers no free-text input anywhere, on desktop or mobile', () => {

@@ -48,6 +48,7 @@ const divide: CalculatorAction = { type: 'operator', operator: 'divide' };
 const power: CalculatorAction = { type: 'operator', operator: 'power' };
 const percent: CalculatorAction = { type: 'operator', operator: 'percent' };
 const sqrt: CalculatorAction = { type: 'unary', operation: 'sqrt' };
+const undo: CalculatorAction = { type: 'undo' };
 const equals: CalculatorAction = { type: 'equals' };
 const clear: CalculatorAction = { type: 'clear' };
 
@@ -67,6 +68,73 @@ describe('calculatorReducer', () => {
 
   it('ignores a second decimal point', () => {
     expect(run(type('1.2.3')).entry.text).toBe('1.23');
+  });
+
+  it('removes the last character the user typed', () => {
+    expect(run([...type('123'), undo]).entry).toEqual({ text: '12', value: 12 });
+  });
+
+  it('deletes the decimal point like any other character', () => {
+    const typed = run(type('1.5'));
+
+    expect(run([undo], typed).entry.text).toBe('1.');
+    expect(run([undo, undo], typed).entry.text).toBe('1');
+    expect(run([undo, undo, undo], typed).entry.text).toBe('0');
+  });
+
+  it('leaves a typed zero once the last character goes, so the next digit replaces it', () => {
+    const undone = run([...type('1'), undo]);
+
+    expect(undone.entry).toEqual({ text: '0', value: 0 });
+    // The zero is still the user's own text, not a result: `7` reads `7`, never `07`.
+    expect(run(type('7'), undone).entry.text).toBe('7');
+  });
+
+  it('does not edit a result, so the next operand keeps its full precision', () => {
+    const divided = run([...type('1'), divide, ...type('3'), equals, { type: 'resolved', result: 1 / 3 }]);
+
+    // The display reads 0.333333333333 for a number that is not that; undoing into
+    // that text would make the rounded string the next operand (DESIGN.md D29).
+    expect(run([undo], divided).entry.text).toBe('0.333333333333');
+
+    const state = run([undo, multiply, ...type('3'), equals], divided);
+
+    expect(state.pending).toMatchObject({ operation: 'multiply', operands: [1 / 3, 3] });
+  });
+
+  it.each<[string, CalculatorAction[]]>([
+    ['a fresh calculator', []],
+    ['the result of an operation', [...type('9'), add, ...type('7'), equals, { type: 'resolved', result: 16 }]],
+    ['the result of a square root', [...type('9'), sqrt, { type: 'resolved', result: 3 }]],
+    // Neither of these is a result, but both are entries the next digit replaces, and
+    // an entry the next digit replaces is not one the user is still typing.
+    ['an operand the operator turned into the accumulator', [...type('12'), add]],
+    [
+      'the operand a failed calculation left on screen',
+      [...type('12'), divide, ...type('0'), equals, { type: 'rejected', message: 'nope' }],
+    ],
+  ])('does nothing to %s', (_, actions) => {
+    const state = run(actions);
+
+    expect(run([undo], state)).toEqual(state);
+  });
+
+  it('edits the entry and nothing else', () => {
+    const typed = run([
+      ...type('2'),
+      add,
+      ...type('3'),
+      equals,
+      { type: 'resolved', result: 5 },
+      multiply,
+      ...type('47'),
+    ]);
+
+    const state = run([undo], typed);
+
+    expect(state).toMatchObject({ accumulator: 5, operator: 'multiply', entry: { text: '4', value: 4 } });
+    expect(state.history).toEqual(typed.history);
+    expect(formatExpression(state)).toBe('5 × 4');
   });
 
   it('stores the accumulator when an operator is pressed', () => {
@@ -433,7 +501,7 @@ describe('calculatorReducer', () => {
   it('ignores input while a request is in flight, except clear', () => {
     const inFlight = run([...type('2'), add, ...type('3'), equals]);
 
-    expect(run([...type('9'), multiply, equals], inFlight)).toEqual(inFlight);
+    expect(run([...type('9'), multiply, undo, equals], inFlight)).toEqual(inFlight);
     expect(run([clear], inFlight)).toEqual(initialState);
   });
 

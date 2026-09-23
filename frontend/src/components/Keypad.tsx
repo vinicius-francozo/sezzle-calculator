@@ -5,16 +5,18 @@ import type { BinaryOperation } from '../types/api';
 import { CalcButton, type ButtonVariant } from './CalcButton';
 
 interface KeyDefinition {
-  readonly label: string;
-  readonly name?: string;
+  /** The face of the key: its text, or an icon for a key no character stands for. */
+  readonly label: React.ReactNode;
+  /** Accessible name, and the identity of the key in the list below. */
+  readonly name: string;
   readonly variant: ButtonVariant;
-  /** How much of the grid the key covers: two columns, or the whole bottom row. */
-  readonly span?: 'wide' | 'full';
+  /** Whether the key covers the whole bottom row, as `=` does. */
+  readonly full?: boolean;
   readonly action: CalculatorAction;
 }
 
 function digit(value: string): KeyDefinition {
-  return { label: value, variant: 'digit', action: { type: 'digit', digit: value } };
+  return { label: value, name: value, variant: 'digit', action: { type: 'digit', digit: value } };
 }
 
 /** An operator key, labelled with its expression symbol unless a legend says more. */
@@ -23,12 +25,26 @@ function operator(name: BinaryOperation, label = OPERATOR_SYMBOLS[name]): KeyDef
 }
 
 /**
- * The keypad, in visual order: four columns by six rows, digits on the left and
- * operators down the right. That is 24 cells for 20 keys, and the two spans take
- * up the difference exactly — `0` covers two columns, `=` the whole bottom row —
- * so the grid has no hole in it.
+ * The conventional undo arrow, drawn inline: the project carries no icon library and
+ * a single glyph does not earn one. It is hidden from assistive technology because
+ * the button already has a name of its own, which must not be announced twice.
+ */
+const UNDO_ICON = (
+  <svg className="key__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z" />
+  </svg>
+);
+
+/**
+ * The keypad, in visual order: four columns by six rows, digits in the three left
+ * columns and the four arithmetic operators down the right. That is 24 cells for 21
+ * keys, and the single span takes up the difference exactly — `=` covers the whole
+ * bottom row — so the grid has no hole in it. `0` gives up the two-column span it had
+ * before undo arrived, and `%` takes the cell that frees, which is why an operator
+ * sits in the bottom digit row. Undo comes first: it is the top-left key (DESIGN.md D29).
  */
 const KEYS: readonly KeyDefinition[] = [
+  { label: UNDO_ICON, name: 'undo', variant: 'action', action: { type: 'undo' } },
   { label: 'C', name: 'clear', variant: 'action', action: { type: 'clear' } },
   {
     label: OPERATOR_SYMBOLS.sqrt,
@@ -38,7 +54,6 @@ const KEYS: readonly KeyDefinition[] = [
   },
   // `x` to the power of `y`, because `^` on a key says nothing on its own.
   operator('power', 'xʸ'),
-  operator('percent'),
   digit('7'),
   digit('8'),
   digit('9'),
@@ -51,10 +66,11 @@ const KEYS: readonly KeyDefinition[] = [
   digit('2'),
   digit('3'),
   operator('subtract'),
-  { label: '0', variant: 'digit', span: 'wide', action: { type: 'digit', digit: '0' } },
+  digit('0'),
   { label: '.', name: 'decimal point', variant: 'digit', action: { type: 'decimal' } },
+  operator('percent'),
   operator('add'),
-  { label: '=', name: 'equals', variant: 'action', span: 'full', action: { type: 'equals' } },
+  { label: '=', name: 'equals', variant: 'action', full: true, action: { type: 'equals' } },
 ];
 
 export interface KeypadProps {
@@ -89,11 +105,11 @@ export function Keypad({ dispatch, busy }: KeypadProps): React.JSX.Element {
     >
       {KEYS.map((key) => (
         <CalcButton
-          key={key.name ?? key.label}
+          key={key.name}
           label={key.label}
           name={key.name}
           variant={key.variant}
-          span={key.span}
+          full={key.full}
           disabled={busy && key.action.type !== 'clear'}
           onPress={() => dispatch(key.action)}
         />
