@@ -172,6 +172,18 @@ jobs:
       - name: Build the images and start the stack
         run: docker compose up --build --detach --wait --wait-timeout 120
 
+      # The frontend image declares no healthcheck, so for that container --wait
+      # returns at running, which is a moment or two before nginx is listening.
+      # Nine cold starts in a row never needed this, so it is insurance against
+      # a race rather than a fix for an observed failure -- and it is kept here,
+      # out of the smoke test, so that no assertion in there is silently retried
+      # into passing.
+      - name: Wait for the proxy to accept connections
+        run: |
+          curl --silent --show-error --fail --output /dev/null \
+            --retry 3 --retry-connrefused --retry-delay 1 \
+            http://localhost:3000/
+
       - name: Exercise the API through the proxy
         run: ./scripts/smoke-test.sh
 
