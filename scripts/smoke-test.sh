@@ -120,6 +120,13 @@ check "addition is computed" 200 '.operation == "add" and .operands == [2, 3] an
 check "division by zero is refused" 400 '.error.code == "DIVISION_BY_ZERO"' \
     --header "$json" --data '{"operation":"divide","operands":[12,0]}' "$calculate"
 
+# The one row of docs/api.md the proxy could plausibly swallow: an unknown path
+# under /api/ must reach the backend and come back as the error envelope, not as
+# the SPA that nginx falls back to everywhere else.
+check "an unknown API route is refused" 404 \
+    '.error.code == "NOT_FOUND" and (.error.message | type) == "string"' \
+    "$base_url/api/v1/no-such-route"
+
 check "a wrong method is refused" 405 '.error.code == "METHOD_NOT_ALLOWED"' \
     --request GET "$calculate"
 check_header 'Allow' 'POST'
