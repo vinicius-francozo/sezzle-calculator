@@ -1,12 +1,13 @@
 export type ButtonVariant = 'digit' | 'operator' | 'action';
 
 export interface CalcButtonProps {
-  readonly label: string;
-  /** Accessible name, for buttons whose label is a symbol. */
-  readonly name?: string;
+  /** The face of the key: its text, or an icon for a key no character stands for. */
+  readonly label: React.ReactNode;
+  /** Accessible name — the label itself for a key whose face is already a word. */
+  readonly name: string;
   readonly variant: ButtonVariant;
-  /** How much of the grid the key covers: two columns, or the whole bottom row. */
-  readonly span?: 'wide' | 'full';
+  /** Whether the key covers the whole bottom row, as `=` does. */
+  readonly full?: boolean;
   readonly disabled: boolean;
   readonly onPress: () => void;
 }
@@ -16,15 +17,14 @@ export function CalcButton({
   label,
   name,
   variant,
-  span,
+  full = false,
   disabled,
   onPress,
 }: CalcButtonProps): React.JSX.Element {
-  const spanClass = span === undefined ? '' : ` key--${span}`;
   return (
     <button
       type="button"
-      className={`key key--${variant}${spanClass}`}
+      className={`key key--${variant}${full ? ' key--full' : ''}`}
       aria-label={name}
       disabled={disabled}
       // Every major browser focuses a button when it is clicked, and that residual

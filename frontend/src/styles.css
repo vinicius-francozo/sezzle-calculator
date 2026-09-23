@@ -129,13 +129,17 @@ body {
   background: var(--key-action);
 }
 
-.key--wide {
-  grid-column: span 2;
-}
-
-/* `=` fills the bottom row, which is the cell `0` does not take. */
+/* `=` fills the bottom row: the four cells the twenty single-cell keys leave over. */
 .key--full {
   grid-column: 1 / -1;
+}
+
+/* Sized in `em` so the icon shrinks with the label text of the narrow layout below. */
+.key__icon {
+  display: block;
+  margin: 0 auto;
+  width: 1.25em;
+  height: 1.25em;
 }
 
 .key:hover:not(:disabled) {
