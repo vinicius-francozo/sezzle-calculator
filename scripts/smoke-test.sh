@@ -12,6 +12,14 @@ set -eu
 
 base_url=${BASE_URL:-http://localhost:3000}
 
+# Every body assertion is a jq predicate, so without jq each of them would come
+# back false and the run would read as a wall of application failures. Say what
+# is actually missing instead.
+if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required to check the response bodies" >&2
+    exit 1
+fi
+
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' EXIT
 headers="$work_dir/headers"
@@ -37,7 +45,10 @@ fail() {
 # check DESCRIPTION EXPECTED_STATUS JQ_PREDICATE [curl arguments...]
 #
 # The predicate is a jq boolean over the response body; an empty one skips the
-# body check, for responses that are not JSON.
+# body check, for responses that are not JSON. jq keeps its stderr: it is silent
+# about a predicate that is merely false, so anything it does say is a fault in
+# the predicate itself, and swallowing it would blame the application for a
+# broken assertion.
 check() {
     description=$1
     expected_status=$2
@@ -54,7 +65,7 @@ check() {
         fail "expected HTTP $expected_status, got $status"
         return 0
     fi
-    if [ -n "$predicate" ] && ! jq --exit-status "$predicate" "$body" >/dev/null 2>&1; then
+    if [ -n "$predicate" ] && ! jq --exit-status "$predicate" "$body" >/dev/null; then
         fail "body does not satisfy: $predicate"
         return 0
     fi
