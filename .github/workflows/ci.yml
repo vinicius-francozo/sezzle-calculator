@@ -50,6 +50,9 @@ jobs:
           if [ -n "$unformatted" ]; then
             echo "::error::gofmt would rewrite these files:"
             echo "$unformatted"
+            # The annotation is a headline; the diff is what someone can act on
+            # without a local Go toolchain.
+            gofmt -d .
             exit 1
           fi
 
