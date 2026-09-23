@@ -38,3 +38,33 @@ func TestDescribeErrorKeepsTransportErrors(t *testing.T) {
 		t.Errorf("Error() = %q, want %q", want.Error(), want.message)
 	}
 }
+
+// The codes are the frozen half of the contract: the frontend branches on
+// them, so a typo in one is a broken client rather than a reworded message.
+// Everywhere else in the suite a response is compared against the constant
+// itself, which pins the mapping but not the spelling; this is the one place
+// that reads docs/api.md back.
+func TestErrorCodesMatchTheContract(t *testing.T) {
+	tests := []struct {
+		got  string
+		want string
+	}{
+		{codeInvalidJSON, "INVALID_JSON"},
+		{codeValidationError, "VALIDATION_ERROR"},
+		{codeUnsupportedOperation, "UNSUPPORTED_OPERATION"},
+		{codeDivisionByZero, "DIVISION_BY_ZERO"},
+		{codeUndefinedResult, "UNDEFINED_RESULT"},
+		{codeOverflow, "OVERFLOW"},
+		{codeNotFound, "NOT_FOUND"},
+		{codeMethodNotAllowed, "METHOD_NOT_ALLOWED"},
+		{codeInternalError, "INTERNAL_ERROR"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.want, func(t *testing.T) {
+			if test.got != test.want {
+				t.Errorf("code = %q, want %q", test.got, test.want)
+			}
+		})
+	}
+}
